@@ -28,7 +28,7 @@ public class App
     	// Make options
     	Options cliOptions = new Options();
     	cliOptions.addOption("h","help",false,"help");
-    	cliOptions.addOption("s","summary",false,"Display summary statistics on IDF/SDRF");
+    	cliOptions.addOption("s","summary",false,"display summary statistics on IDF/SDRF");
 
     	Option output = OptionBuilder.withArgName("output.txt").hasArg().withDescription("use given file for output").isRequired().create("output");
     	Option owlfile = OptionBuilder.withArgName("file.owl").hasArg().withDescription("use given owl file. Defaults to v142").create("owlfile");
