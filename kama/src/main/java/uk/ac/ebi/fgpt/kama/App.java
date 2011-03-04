@@ -94,16 +94,22 @@ public class App
 					HashMap<String,Integer> sdrfCount = kamaInstance.getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.sdrf,listOfEFOAccessionIds);
 					if(idfCount.size()!=sdrfCount.size()){
 						System.err.println("There was an error fetching files. SDRF files are not equal to IDF Files");
-						return;
+						System.err.println("Will Print Out Experiments That Have both SDRF and IDFs");
 					}
 					String outString ="";
 					outString+=("#AccessionId\tIDF\tSDRF\tTerms");
 					for(String accession:listOfExperimentAccessions){
-						outString+=("\n");
-						outString+=(accession+"\t");
-						outString+=(idfCount.get(accession)+"\t");
-						outString+=(sdrfCount.get(accession)+"\t");
-						outString+=(kamaInstance.getCountOfEachTermInExperimentAsString(accession, Scope.both, listOfEFOAccessionIds));
+						if(idfCount.get(accession)!=null && sdrfCount.get(accession)!=null){
+							outString+=("\n");
+							outString+=(accession+"\t");
+							outString+=(idfCount.get(accession)+"\t");
+							outString+=(sdrfCount.get(accession)+"\t");
+							outString+=(kamaInstance.getCountOfEachTermInExperimentAsString(accession, Scope.both, listOfEFOAccessionIds));	
+						}else{
+							System.out.println(accession + " does not have both Magetab files");
+							continue;	
+						}
+						
 					}
 					//Write the file
 					FileManipulators.stringToFile(outputFileString,outString);
