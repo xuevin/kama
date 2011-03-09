@@ -158,32 +158,7 @@ public class Kama {
 		int countOfTermsFound=0;
 		
 		for(String dictWord : listOfChildren){
-			//First make regex
-			String regEx = Term2Re.convert(dictWord);
-			
-			try {
-				Nfa nfa = new Nfa(regEx, new Printf("%0"));
-			
-				// Compile into the Dfa, specify that all text not matching any
-			    // regular expression shall be copied from input to output
-			    Dfa dfa = nfa.compile(DfaRun.UNMATCHED_DROP);
-
-			    // get a machinery (DfaRun) to operate the Dfa
-			    DfaRun r = new DfaRun(dfa);
-
-			    //Get only the filtered text
-			    String filtered = r.filter(passage);
-			    
-			    if(filtered.length()!=0){
-			    	countOfTermsFound+=filtered.split("\\s+").length;
-			    }
-			} catch (ReSyntaxException e) {
-				e.printStackTrace();
-			} catch (CompileDfaException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}	
+			countOfTermsFound+=getCountFromPassage(dictWord, passage);
 		}
 		return countOfTermsFound;
 	}
@@ -231,23 +206,11 @@ public class Kama {
 		for(String accession:listOfExperimentAccessions){
 			File file = hashMapToUse.get(accession);
 			if(file!=null){
-
-				BufferedReader br;
-				try {
-					br = new BufferedReader(new FileReader(file));
-					String text;
-					String passage="";
-					while((text= br.readLine())!=null){
-						passage+=text;
-					}
-					if(passage!=""){
-						returnHashMap.put(accession, getIfPassageContainsEFO(passage, listOfEFOAccessionIds));	
-					}
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
+				String passage = getPassageFromFile(file);
+				if(passage!=""){
+					returnHashMap.put(accession, getIfPassageContainsEFO(passage, listOfEFOAccessionIds));	
 				}
+				
 				
 			}
 		}
@@ -271,62 +234,47 @@ public class Kama {
 		if(file == null){
 			return returnHash;
 		}
-		BufferedReader br;
-		try {
-			br = new BufferedReader(new FileReader(file));
-			String text;
-			String passage="";
-			while((text= br.readLine())!=null){
-				passage+=text+"\n";
-			}
+		String passage = getPassageFromFile(file);	
+		if(!passage.isEmpty()){
+			passage = passage.replaceAll("\\s+$", "");
+
 			
-			if(!passage.isEmpty()){
-				passage = passage.replaceAll("\\s+$", "");
-	
-				
-				String[] rowString = passage.split("\n");
-				String[][] table = stringToTable(passage);
-				
-				boolean hasADFColumn = false;
-				int adfColumn = 0;
-				
-				//Look for the column named "Array Data File"
-				for(int i =0;i<table[0].length;i++){
-					if(table[0][i].equals("Array Data File")){
-						hasADFColumn=true;
-						adfColumn=i;
-						break;
-					}
+			String[] rowString = passage.split("\n");
+			String[][] table = stringToTable(passage);
+			
+			boolean hasADFColumn = false;
+			int adfColumn = 0;
+			
+			//Look for the column named "Array Data File"
+			for(int i =0;i<table[0].length;i++){
+				if(table[0][i].equals("Array Data File")){
+					hasADFColumn=true;
+					adfColumn=i;
+					break;
 				}
-				//Put into Hash whether or not row contains EFO
-				if(hasADFColumn==true){
-					for(int i = 1;i<table.length;i++){
+			}
+			//Put into Hash whether or not row contains EFO
+			if(hasADFColumn==true){
+				for(int i = 1;i<table.length;i++){
 //						System.out.println(table[i][adfColumn]+ "\t" +getIfPassageContainsEFO(rowString[i], EFOAccessionId));
-						//Make sure that CEL Files which have at least one reference to blood are still reported
-						if(returnHash.get(table[i][adfColumn])==null){
-							returnHash.put(table[i][adfColumn],getIfPassageContainsEFO(rowString[i], listOfEFOAccessionIds));	
+					//Make sure that CEL Files which have at least one reference to blood are still reported
+					if(returnHash.get(table[i][adfColumn])==null){
+						returnHash.put(table[i][adfColumn],getIfPassageContainsEFO(rowString[i], listOfEFOAccessionIds));	
+					}else{
+						if(returnHash.get(table[i][adfColumn])==true){
+							//skip 
+							//Keep true, true	
 						}else{
-							if(returnHash.get(table[i][adfColumn])==true){
-								//skip 
-								//Keep true, true	
-							}else{
-								//Replace False with whether or not the passage contains efo
-								returnHash.put(table[i][adfColumn],getIfPassageContainsEFO(rowString[i], listOfEFOAccessionIds));
-							}
+							//Replace False with whether or not the passage contains efo
+							returnHash.put(table[i][adfColumn],getIfPassageContainsEFO(rowString[i], listOfEFOAccessionIds));
 						}
 					}
-				}else{
-					System.out.println(experimentAccession + " does not have a ADF column");
 				}
+			}else{
+				System.out.println(experimentAccession + " does not have a ADF column");
 			}
-			
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
 		return returnHash;
-		
 	}
 	/**
 	 * Gets the experiment to count hash map that is used to determine how many times the members of an EFO class occur in a given experiment.
@@ -362,24 +310,10 @@ public class Kama {
 		for(String accession:listOfExperimentAccessions){
 			File file = hashMapToUse.get(accession);
 			if(file!=null){
-	
-				BufferedReader br;
-				try {
-					br = new BufferedReader(new FileReader(file));
-					String text;
-					String passage="";
-					while((text= br.readLine())!=null){
-						passage+=text;
-					}
-					if(passage!=""){
-						returnHashMap.put(accession, getPassageCountOfEFO(passage, listOfEFOAccessions));	
-					}
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
+				String passage = getPassageFromFile(file);
+				if(passage!=""){
+					returnHashMap.put(accession, getPassageCountOfEFO(passage, listOfEFOAccessions));	
 				}
-				
 			}
 		}
 			
@@ -402,62 +336,51 @@ public class Kama {
 		if(file == null){
 			return returnHash;
 		}
-		BufferedReader br;
-		try {
-			br = new BufferedReader(new FileReader(file));
-			String text;
-			String passage="";
-			while((text= br.readLine())!=null){
-				passage+=text+"\n";
-			}
-			
-			//Read a sdrf file and put it into a 2d array
-			if(!passage.isEmpty()){
-				passage = passage.replaceAll("\\s+$", "");
-	
-				
-				String[] rowString = passage.split("\n");
-				String[][] table = stringToTable(passage);
-				
-				boolean hasADFColumn = false;
-				int adfColumn = 0;
-				
-				//Look for the column named "Array Data File"
-				for(int i =0;i<table[0].length;i++){
-					if(table[0][i].equals("Array Data File")){
-						hasADFColumn=true;
-						adfColumn=i;
-						break;
-					}
-				}
-				//Put into Hash the count of how many children were found
-				if(hasADFColumn==true){
-					for(int i = 1;i<table.length;i++){
-//						System.out.println(table[i][adfColumn]+ "\t" +getIfPassageContainsEFO(rowString[i], EFOAccessionId));
-						//Make sure that CEL Files which have at least one reference to EFO are still reported and
-						//add the values
-						if(returnHash.get(table[i][adfColumn])==null){
-							returnHash.put(table[i][adfColumn],getPassageCountOfEFO(rowString[i], listOfEFOAccessionIds));	
-						}else{
-							//put the sum of the samples in
-							returnHash.put(table[i][adfColumn], 
-									returnHash.get(table[i][adfColumn]).intValue()+
-									+getPassageCountOfEFO(rowString[i], listOfEFOAccessionIds)		
-							);
-						}
-					}
-				}else{
-					System.out.println(experimentAccession + " does not have a ADF column");
+		String passage = getPassageFromFile(file);
+		// Read a sdrf file and put it into a 2d array
+		if (!passage.isEmpty()) {
+			passage = passage.replaceAll("\\s+$", "");
+
+			String[] rowString = passage.split("\n");
+			String[][] table = stringToTable(passage);
+
+			boolean hasADFColumn = false;
+			int adfColumn = 0;
+
+			// Look for the column named "Array Data File"
+			for (int i = 0; i < table[0].length; i++) {
+				if (table[0][i].equals("Array Data File")) {
+					hasADFColumn = true;
+					adfColumn = i;
+					break;
 				}
 			}
-			
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
+			// Put into Hash the count of how many children were found
+			if (hasADFColumn == true) {
+				for (int i = 1; i < table.length; i++) {
+					// System.out.println(table[i][adfColumn]+ "\t"
+					// +getIfPassageContainsEFO(rowString[i], EFOAccessionId));
+					// Make sure that CEL Files which have at least one
+					// reference to EFO are still reported and
+					// add the values
+					if (returnHash.get(table[i][adfColumn]) == null) {
+						returnHash.put(table[i][adfColumn],
+								getPassageCountOfEFO(rowString[i],
+										listOfEFOAccessionIds));
+					} else {
+						// put the sum of the samples in
+						returnHash.put(table[i][adfColumn], returnHash.get(
+								table[i][adfColumn]).intValue()
+								+ +getPassageCountOfEFO(rowString[i],
+										listOfEFOAccessionIds));
+					}
+				}
+			} else {
+				System.out.println(experimentAccession
+						+ " does not have a ADF column");
+			}
 		}
 		return returnHash;
-		
 	}
 	
 	/**
@@ -473,71 +396,68 @@ public class Kama {
 		HashMap<String,HashMap<String,Integer>> returnHash = new HashMap<String, HashMap<String,Integer>>();
 		File file = hashOfAccessionFilesForSDRF.get(experimentAccession);
 		
-		if(file == null){
+		if (file == null) {
 			return returnHash;
 		}
-		BufferedReader br;
-		try {
-			br = new BufferedReader(new FileReader(file));
-			String text;
-			String passage="";
-			while((text= br.readLine())!=null){
-				passage+=text+"\n";
-			}
-			
-			//Read a sdrf file and put it into a 2d array
-			if(!passage.isEmpty()){
-				passage = passage.replaceAll("\\s+$", "");
-	
-				
-				String[] rowString = passage.split("\n");
-				String[][] table = stringToTable(passage);
-				
-				boolean hasADFColumn = false;
-				int adfColumn = 0;
-				
-				//Look for the column named "Array Data File"
-				for(int i =0;i<table[0].length;i++){
-					if(table[0][i].equals("Array Data File")){
-						hasADFColumn=true;
-						adfColumn=i;
-						break;
-					}
+		String passage = getPassageFromFile(file);
+
+		// Read a sdrf file and put it into a 2d array
+		if (!passage.isEmpty()) {
+			passage = passage.replaceAll("\\s+$", "");
+
+			String[] rowString = passage.split("\n");
+			String[][] table = stringToTable(passage);
+
+			boolean hasADFColumn = false;
+			int adfColumn = 0;
+
+			// Look for the column named "Array Data File"
+			for (int i = 0; i < table[0].length; i++) {
+				if (table[0][i].equals("Array Data File")) {
+					hasADFColumn = true;
+					adfColumn = i;
+					break;
 				}
-				//Put into Hash the sample and the terms it found
-				if(hasADFColumn==true){
-					for(int i = 1;i<table.length;i++){
-//						System.out.println(table[i][adfColumn]+ "\t" +getIfPassageContainsEFO(rowString[i], EFOAccessionId));
-						//Make sure that CEL Files which have at least one reference to EFO are still reported and
-						//add the values
-						if(returnHash.get(table[i][adfColumn])==null){
-							returnHash.put(table[i][adfColumn],passageToTermHash(rowString[i], listOfEFOAccessionIds));	
-						}else{
-							//Combine hashes
-							HashMap<String, Integer>  newHash = passageToTermHash(rowString[i], listOfEFOAccessionIds);
-							
-							for(String term: newHash.keySet()){
-								if(returnHash.get(table[i][adfColumn]).get(term)!=null){
-									int newSum = returnHash.get(table[i][adfColumn]).get(term).intValue()+newHash.get(term).intValue();
-									returnHash.get(table[i][adfColumn]).put(term,newSum);
-								}else{
-									returnHash.get(table[i][adfColumn]).put(term, newHash.get(term));
-								}
+			}
+			// Put into Hash the sample and the terms it found
+			if (hasADFColumn == true) {
+				for (int i = 1; i < table.length; i++) {
+					// System.out.println(table[i][adfColumn]+ "\t"
+					// +getIfPassageContainsEFO(rowString[i], EFOAccessionId));
+					// Make sure that CEL Files which have at least one
+					// reference to EFO are still reported and
+					// add the values
+					if (returnHash.get(table[i][adfColumn]) == null) {
+						returnHash.put(table[i][adfColumn], passageToTermHash(
+								rowString[i], listOfEFOAccessionIds));
+					} else {
+						// Combine hashes
+						HashMap<String, Integer> newHash = passageToTermHash(
+								rowString[i], listOfEFOAccessionIds);
+
+						for (String term : newHash.keySet()) {
+							if (returnHash.get(table[i][adfColumn]).get(term) != null) {
+								int newSum = returnHash
+										.get(table[i][adfColumn]).get(term)
+										.intValue()
+										+ newHash.get(term).intValue();
+								returnHash.get(table[i][adfColumn]).put(term,
+										newSum);
+							} else {
+								returnHash.get(table[i][adfColumn]).put(term,
+										newHash.get(term));
 							}
 						}
 					}
-				}else{
-					System.out.println(experimentAccession + " does not have a ADF column");
 				}
+			} else {
+				System.out.println(experimentAccession
+						+ " does not have a ADF column");
 			}
-			
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
+
 		return returnHash;
-		
+	
 	}
 	
 	/**
@@ -584,53 +504,18 @@ public class Kama {
 			return null;
 		}
 		File file = hashMapToUse.get(experimentAccession);
-		if(file!=null){
-
-			BufferedReader br;
-			try {
-				br = new BufferedReader(new FileReader(file));
-				String text;
-				String passage="";
-				while((text= br.readLine())!=null){
-					passage+=text;
-				}
-				if(passage!=""){
-					for(String dictWord : listOfChildren){
-						//First make regex
-						String regEx = Term2Re.convert(dictWord);
-						
-						try {
-							Nfa nfa = new Nfa(regEx, new Printf("%0"));
-						
-							// Compile into the Dfa, specify that all text not matching any
-						    // regular expression shall be copied from input to output
-						    Dfa dfa = nfa.compile(DfaRun.UNMATCHED_DROP);
-
-						    // get a machinery (DfaRun) to operate the Dfa
-						    DfaRun r = new DfaRun(dfa);
-
-						    //Get only the filtered text
-						    String filtered = r.filter(passage);
-						    
-						    if(filtered.length()!=0){
-						    	returnHashMap.put(dictWord,filtered.split("\\s+").length);
-						    }
-						} catch (ReSyntaxException e) {
-							e.printStackTrace();
-						} catch (CompileDfaException e) {
-							e.printStackTrace();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}	
+		if (file != null) {
+			String passage = getPassageFromFile(file);
+			if (passage != "") {
+				for (String dictWord : listOfChildren) {
+					int count = getCountFromPassage(dictWord, passage);
+					if (count != 0) {
+						returnHashMap.put(dictWord,count);
 					}
 				}
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
 			}
 		}
-		return returnHashMap;		
+		return returnHashMap;	
 	}
 	public String getCountOfEachTermInExperimentAsString(String experimentAccession,Scope filetype,String ...listOfEFOAccessionIds){
 		HashMap<String, Integer> countMap = getCountOfEachTermInExperiment(experimentAccession, filetype, listOfEFOAccessionIds);
@@ -766,33 +651,61 @@ public class Kama {
 		ArrayList<String> listOfChildren = getChildrenOfEFOAccessionPlusItself(listOfEFOAccessionIds);
 		HashMap<String,Integer> returnHashMap = new HashMap<String, Integer>();
 		for(String dictWord : listOfChildren){
-			//First make regex
-			String regEx = Term2Re.convert(dictWord);
-			
-			try {
-				Nfa nfa = new Nfa(regEx, new Printf("%0"));
-			
-				// Compile into the Dfa, specify that all text not matching any
-			    // regular expression shall be copied from input to output
-			    Dfa dfa = nfa.compile(DfaRun.UNMATCHED_DROP);
-
-			    // get a machinery (DfaRun) to operate the Dfa
-			    DfaRun r = new DfaRun(dfa);
-
-			    //Get only the filtered text
-			    String filtered = r.filter(passage);
-			    
-			    if(filtered.length()!=0){
-			    	returnHashMap.put(dictWord,filtered.split("\\s+").length);
-			    }
-			} catch (ReSyntaxException e) {
-				e.printStackTrace();
-			} catch (CompileDfaException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			int count = getCountFromPassage(dictWord, passage); 
+			if(count!=0){
+			    	returnHashMap.put(dictWord,count);
+			 }
 		}
 		return returnHashMap;
+	}
+	private String getPassageFromFile(File file){
+		BufferedReader br;
+		try {
+			br = new BufferedReader(new FileReader(file));
+			String text;
+			String passage="";
+			while((text= br.readLine())!=null){
+				passage+=text+" \n"; //Space is because monq does not recognize line break!
+			}
+			return passage;
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+	private int getCountFromPassage(String term,String passage){
+
+		//First make regex
+		String regEx = Term2Re.convert(term);
+		
+		try {
+			Nfa nfa = new Nfa(regEx, new Printf("%0"));
+		
+			// Compile into the Dfa, specify that all text not matching any
+		    // regular expression shall be copied from input to output
+		    Dfa dfa = nfa.compile(DfaRun.UNMATCHED_DROP);
+
+		    // get a machinery (DfaRun) to operate the Dfa
+		    DfaRun r = new DfaRun(dfa);
+
+		    //Get only the filtered text
+		    String filtered = r.filter(passage);
+		    
+		    if(filtered.length()!=0){
+		    	return (filtered.split("[-\\s+]").length)/(term.split("[-\\s+]").length);
+		    }
+		} catch (ReSyntaxException e) {
+			e.printStackTrace();
+		} catch (CompileDfaException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		return 0;
+		
 	}
 }

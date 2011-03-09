@@ -11,6 +11,7 @@ import java.net.SocketException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import monq.ie.Term2Re;
 import monq.jfa.CompileDfaException;
@@ -335,7 +336,7 @@ public class KamaTest {
 		//IDF: Spleen:3 Thymus:3
 		//SDRF: Thymus: 212, spleen: 105
 		
-		//To make sure that FieldType.both works
+		//To make sure that Scope.both works
 		assertEquals(107, kama.getCountOfEachTermInExperiment("E-TABM-721", Scope.sdrf, "EFO_0000798").get("thymus").intValue());
 		assertEquals(3, kama.getCountOfEachTermInExperiment("E-TABM-721", Scope.idf, "EFO_0000798").get("thymus").intValue());
 		assertEquals(110, kama.getCountOfEachTermInExperiment("E-TABM-721", Scope.both, "EFO_0000798").get("thymus").intValue());
@@ -399,5 +400,27 @@ public class KamaTest {
 			}
 			System.out.println();
 		}
+	}
+	@Test 
+	public void testGetCountOfEachTermPerExperiment(){
+		Kama kama = new Kama();
+		HashMap<String,Integer> hash = kama.getCountOfEachTermInExperiment("E-GEOD-23501", Scope.idf, "EFO_0000403");
+		assertEquals(4, hash.get("diffuse large B-cell lymphoma").intValue());
+	}
+	@Test
+	public void showThatSumOfCountPerTerm_Equals_SumOfAllTermsFoundPerExperiment(){
+		Kama kama = new Kama();
+		HashMap<String,Integer> hash = kama.getCountOfEachTermInExperiment("E-GEOD-23501", Scope.idf, "EFO_0000403");
+		int sum = 0;
+		for(String key:hash.keySet()){
+			sum+=hash.get(key).intValue();
+		}
+		
+		ArrayList<String> listOfExperimentAccessions = new ArrayList<String>();
+		listOfExperimentAccessions.add("E-GEOD-23501");
+		HashMap<String,Integer> hashOfAccessionToCount = kama.getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.idf, "EFO_0000403");
+		
+		
+		assertEquals(sum,hashOfAccessionToCount.get("E-GEOD-23501").intValue());
 	}
 }
