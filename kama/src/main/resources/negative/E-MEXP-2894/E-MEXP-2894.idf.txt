@@ -1,0 +1,32 @@
+Comment[ArrayExpressAccession]	E-MEXP-2894
+Investigation Title	Transcription profiling by array of human ductal carcinomas and papillary cancers of the pancreas
+Comment[Submitted Name]	Hepatocyte nuclear factor HNF4 alpha Expression distinguishes Ampullary Cancer Subtypes and Prognosis after Resection
+Publication Title	
+Publication Author List	
+Publication DOI	
+PubMed ID	
+Experimental Design	in_vitro_design	disease_state_design	co-expression_design	transcription profiling by array
+Experimental Design Term Source REF		The MGED Ontology	The MGED Ontology	EFO
+Comment[MIAMExpressLogin]	Cpilarsky																							
+Comment[MIAMExpressSubmissionID]	6937																							
+Experiment Description	Ductal carcinomas and papillary cancers of the pancreas were microdissected and their expression profiles compared.																							
+Experimental Factor Name	DISEASE_STATE	INDIVIDUAL																						
+Experimental Factor Type	disease_state	individual																						
+Person Last Name	Pilarsky																							
+Person First Name	Christian																							
+Person Email	christian.pilarsky@web.de																							
+Person Phone	493514580																							
+Person Affiliation	University Hospital Dresden																							
+Person Address	Surgery, Fetscherstr. 74, Dresden, Sx, 01307, Germany																							
+Person Roles	submitter																							
+Person Roles Term Source REF	MGED Ontology																							
+Quality Control Type																								
+Public Release Date	2010-12-24																							
+Comment[ArrayExpressSubmissionDate]	2010-08-30 13:08																							
+Protocol Name	P-MTAB-16758	P-MTAB-16759
+Protocol Description	RNA was extracted from the microdissected frozen tissue with the Qiagen RNeasy Mini kit and after QC with an Agilent system all samples with RIN > 4 were used for further evaluation. 100 ng of the RNA was subjected to the Affymetrix Two cycle amplification an labeling kit. (Parameters: Extracted product = total_RNA, Amplification = RNA polymerases)	Samples were snap frozen after surgery and microdissected for gene expression profiling																						
+Protocol Type	nucleic_acid_extraction	specified_biomaterial_action																						
+Protocol Term Source REF	MGED Ontology	MGED Ontology																						
+Term Source Name	MGED Ontology	ArrayExpress		The MGED Ontology	EFO
+Term Source File	http://mged.sourceforge.net/ontologies/MGEDontology.php	http://www.ebi.ac.uk/arrayexpress																						
+SDRF File	E-MEXP-2894.sdrf.txt

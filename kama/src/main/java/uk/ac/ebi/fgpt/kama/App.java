@@ -1,6 +1,7 @@
 package uk.ac.ebi.fgpt.kama;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -12,6 +13,7 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.apache.commons.io.FileUtils;
 
 import uk.ac.ebi.fgpt.kama.Kama.Scope;
 
@@ -24,11 +26,13 @@ public class App
 
 	public static void main( String[] args ){
 	    boolean displaySummary = false;
+	    boolean doExtra = false;
 
     	// Make options
     	Options cliOptions = new Options();
     	cliOptions.addOption("h","help",false,"help");
     	cliOptions.addOption("s","summary",false,"display summary statistics on IDF/SDRF");
+    	cliOptions.addOption("x","extra",false,"display summary statistics, use synonymns, and save all files to directory");
 
     	Option output = OptionBuilder.withArgName("output.txt").hasArg().withDescription("use given file for output").isRequired().create("output");
     	Option owlfile = OptionBuilder.withArgName("file.owl").hasArg().withDescription("use given owl file. Defaults to v142").create("owlfile");
@@ -67,6 +71,10 @@ public class App
 				outputFileString=cmd.getOptionValue("output");
 			if(cmd.hasOption("s"))
 				displaySummary=true;
+			if(cmd.hasOption("x")){
+				displaySummary=true;
+				doExtra=true;
+			}
 			
 			// Continue only if:
 			// -input is not null
@@ -75,12 +83,21 @@ public class App
 			if(inputEFOList!=null && inputExperimentList!=null && outputFileString!=null){
 				Kama kamaInstance;
 				
-				//Determine is a custom EFO was entered
-				if(owlFileString!=null){
-					kamaInstance= new Kama(new File(owlFileString));
+				if(doExtra){
+					if(owlFileString!=null){
+						kamaInstance= new KamaExtra(new File(owlFileString));
+					}else{
+						kamaInstance= new KamaExtra();
+					}	
 				}else{
-					kamaInstance= new Kama();
+					//Determine is a custom EFO was entered
+					if(owlFileString!=null){
+						kamaInstance= new Kama(new File(owlFileString));
+					}else{
+						kamaInstance= new Kama();
+					}	
 				}
+				
 
 				//Turn files into java objects
 				ArrayList<String> listOfExperimentAccessions = FileManipulators.fileToArrayList(new File(inputExperimentList));
@@ -113,6 +130,49 @@ public class App
 					}
 					//Write the file
 					FileManipulators.stringToFile(outputFileString,outString);
+					
+					
+					if(doExtra){
+						HashMap<String, File> idfHash = ((KamaExtra)kamaInstance).getIDFHash();
+						HashMap<String, File> sdrfHash = ((KamaExtra) kamaInstance).getSDRFHash();
+						HashMap<String,Integer> bothCount = kamaInstance.getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.both,listOfEFOAccessionIds);
+						
+						File outFile = new File(outputFileString);
+						String outDir = outFile.getParent();
+						//Make top level directories
+						System.out.println("Making top level directories...");
+						File yesdir = new File(outDir+"/positive");
+						yesdir.delete();
+						yesdir.mkdir();
+						File nodir = new File(outDir+"/negative");
+						nodir.delete();
+						nodir.mkdir();
+						
+						for(String experimentAccession:listOfExperimentAccessions){
+							
+							if(idfHash.containsKey(experimentAccession) && sdrfHash.containsKey(experimentAccession)){
+							
+								//Yes it does contain a member
+				
+								File dir;
+								if(bothCount.get(experimentAccession).intValue()!=0){
+									dir = new File(yesdir.getAbsolutePath()+"/"+experimentAccession);
+								}else{//No it does not
+									dir = new File(nodir.getAbsolutePath()+"/"+experimentAccession);
+								}
+								dir.delete();
+								dir.mkdir();
+								File targetIDF =  new File(dir.getAbsolutePath()+"/"+experimentAccession+".idf.txt");
+								File targetSDRF = new File(dir.getAbsolutePath()+"/"+experimentAccession+".sdrf.txt");
+								
+								FileUtils.copyFile(idfHash.get(experimentAccession), targetIDF);
+								FileUtils.copyFile(sdrfHash.get(experimentAccession), targetSDRF);
+								System.out.println(experimentAccession + " created");
+							}
+						}
+						
+					}
+					
 				}else{
 					// Sample Level Output
 					String outString = "";
@@ -178,6 +238,9 @@ public class App
 		} catch (ParseException e) {
 	        //System.err.println( "Parsing failed.  Reason: " + e.getMessage() );
 	    	formatter.printHelp( "kama", cliOptions,true);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}   
 	}
 }

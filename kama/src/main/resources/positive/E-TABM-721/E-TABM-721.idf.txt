@@ -1,0 +1,49 @@
+Investigation Title	Transcription profiling of chicken spleen and thymus infected Mareks disease virus (MDV) - a highly contagious oncogenic herpes virus	
+Comment[Submitted Name]	Marek's Infection	
+Experimental Design	disease_state_design	co-expression_design	transcription profiling by array	
+Experimental Design Term Source REF	The MGED Ontology	The MGED Ontology	EFO	
+Comment[AEMIAMESCORE]	4	
+Comment[ArrayExpressReleaseDate]	2010-12-31	
+Comment[SecondaryAccession]		
+Comment[ArrayExpressAccession]	E-TABM-721	
+Comment[MAGETAB TimeStamp_Version]	2010-08-13 13:27:45 Last Changed Rev: 13058	
+Experimental Factor Name	Time	OrganismPart	StrainOrLine	GrowthCondition	
+Experimental Factor Type	time	organism_part	strain_or_line	growth_condition	
+Experimental Factor Term Source REF	
+Person Last Name	Smith	
+Person First Name	Jacqueline	
+Person Mid Initials	
+Person Email	Jacqueline.smith@roslin.ed.ac.uk	
+Person Phone	
+Person Fax	
+Person Address	Division of Genetics and Genomics, The Roslin Institute and R(D)SVS, University of Edinburgh, Roslin, Midlothian, EH25 9PS, UK	
+Person Affiliation	Roslin Institute	
+Person Roles	submitter	
+Person Roles Term Source REF	The MGED Ontology	
+Quality Control Type	Biological_replicate	
+Quality Control Term Source REF	
+Replicate Type	
+Replicate Term Source REF	
+Normalization Type	
+Normalization Term Source REF	
+Date of Experiment	
+Public Release Date	2010-12-31	
+PubMed ID	
+Publication DOI	
+Publication Author List	
+Publication Title	
+Publication Status	
+Publication Status Term Source REF	
+Experiment Description	Marek's disease virus (MDV) is a highly contagious oncogenic herpes virus. Classed as an alpha herpes virus due to its DNA sequence and genome organization, its biological properties are more similar to those of gamma herpes viruses. MDV causes an initial cytolytic infection in B lymphocytes (3-6dpi) followed by infection of CD4+ T cells (at around 7dpi) where the virus becomes latent (for around two weeks) and then goes on to produce lymphoid tumours in the skin, nerves and internal organs. Early symptoms in susceptible birds include lameness, paralysis, loss of appetite, depression, blindness and immuno-suppression. The route of infection is usually respiratory and the disease is highly contagious, being spread by infective feather-follicle dander. Although birds may survive MDV infection, the resultant immuno-suppression leaves the birds highly susceptible to other infections. MDV infection can thus be associated with high mortality rates and, in turn, large economic losses throughout the worldÃ¯Â¾Âs poultry industry. Three-week-old chicks were inoculated with virus (RB1B) via an intra-gastric route and tissue samples were collected at 2, 3 and 4 days post-inoculation. Spleen and thymus tissue were examined from control and infected birds at 2, 3 and 4 days post-infection in birds known to be either susceptible or resistant to the virus. As well as understanding the host immune response to MDV, we are interested in identifying genes involved in disease resistance and so we have analysed the gene expression profiles at these times, when the innate immune response is active. We assume that genes underlying resistance will be involved at this early stage of the host immune response.	
+Protocol Name	P-TABM-3840	P-TABM-3835	P-TABM-3834	Affymetrix:Protocol:Hybridization-HYBRIDIZATION	P-AFFY-6	Affymetrix:Protocol:plier-mm_xxx	
+Protocol Type	specified_biomaterial_action	grow	nucleic_acid_extraction	hybridization	feature_extraction	bioassay_data_transformation	
+Protocol Description	Three-week-old chicks were inoculated with MD virus (RB1B) via an intra-gastric route and tissue samples (spleen and thymus) were collected at 2, 3 and 4 days post-inoculation.	The inbred lines used in this experiment were an MDV susceptible line Ã¯Â¾Â line 72 and an MDV resistant line - line 61.	Tissue samples were stabilized in RNA-later and disrupted by using a Bead-mill (Retsh, Haan, Germany) at 20Htz for 4 min. Total RNA was prepared using a Trizol (Invitrogen, Paisley, UK) extraction method as per the manufacturerÃ¯Â¾'s protocol. Samples were resuspended in a final volume of 100?l of RNAse-free water. Samples were then passed through RNeasy columns (Qiagen, Crawley, UK) to clean up the RNA further. Concentrations of the samples were calculated by measuring OD260 and OD280 on a spectrophotometer. Quality of the RNA was checked on a bioanalyzer (Agilent Technologies, South Queensferry, UK).		Title: Affymetrix CEL analysis. Description: 		
+Protocol Parameters	
+Protocol Hardware	
+Protocol Software					MicroArraySuite 5.0	Affymetrix GeneChip Operating Software	
+Protocol Contact	
+Protocol Term Source REF	
+SDRF File	E-TABM-721.sdrf.txt	
+Term Source Name	The MGED Ontology		NCI_thesaurus	ArrayExpress	The MGED Ontology	EFO	
+Term Source File	http://mged.sourceforge.net/ontologies/MGEDontology.php		ncithesaurus.obo.alt	http://www.ebi.ac.uk/arrayexpress	http://mged.sourceforge.net/ontologies/MGEDontology.php	http://www.ebi.ac.uk/efo/	
+Term Source Version							

@@ -154,4 +154,15 @@ public class AppTest extends TestCase {
 		args2[5] = "src/main/resources/efo.txt";
 		App.main(args2);
 	}
+	public void testMain3(){
+		String[] args2 = new String[7];
+		args2[0] = "-input";
+		args2[1] = "src/main/resources/accessiontest.txt";
+		args2[2] = "-output";
+		args2[3] = "src/main/resources/output.txt";
+		args2[4] = "-efo";
+		args2[5] = "src/main/resources/efo.txt";
+		args2[6] = "-x";
+		App.main(args2);
+	}
 }

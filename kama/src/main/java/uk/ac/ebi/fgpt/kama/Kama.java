@@ -37,15 +37,15 @@ public class Kama {
 	    sdrf, idf ,both
 	}
 	
-	private FileOntologyService ontoService;
-	private String arrayExpressFtp = "ftp.ebi.ac.uk";
-	private String arrayExpressFtpPath = "/pub/databases/microarray/data/experiment/";
-	private HashMap<String,File> hashOfAccessionFilesForSDRF;
-	private HashMap<String,File> hashOfAccessionFilesForIDF;
+	protected FileOntologyService ontoService;
+	protected String arrayExpressFtp = "ftp.ebi.ac.uk";
+	protected String arrayExpressFtpPath = "/pub/databases/microarray/data/experiment/";
+	protected HashMap<String,File> hashOfAccessionFilesForSDRF;
+	protected HashMap<String,File> hashOfAccessionFilesForIDF;
 	
 	/** The EFO to ArrayList<String> hashmap that stores children so that an OWL does not need to be 
 	 * 	parsed multiple times */
-	private HashMap<String,ArrayList<String>> hashOfEFOChildrenTerms;
+	protected HashMap<String,ArrayList<String>> hashOfEFOChildrenTerms;
 	
 
 	//Default uses version 142 of EFO;
@@ -190,7 +190,7 @@ public class Kama {
 			HashMap<String,Boolean> sdrfHash = getTrueFalseHashMapForListOfAccessions(listOfExperimentAccessions,Scope.idf,listOfEFOAccessionIds);
 			HashMap<String,Boolean> idfHash = getTrueFalseHashMapForListOfAccessions(listOfExperimentAccessions,Scope.sdrf,listOfEFOAccessionIds);
 			for(String accession:listOfExperimentAccessions){
-				if((idfHash.get(accession)!=null && sdrfHash.get(accession)!=null)
+				if((idfHash.containsKey(accession) && sdrfHash.containsKey(accession))
 					&&(idfHash.get(accession)==true || sdrfHash.get(accession)==true)){
 					returnHashMap.put(accession, true);
 				}else{
@@ -299,7 +299,9 @@ public class Kama {
 			HashMap<String,Integer> sdrfHash = getCountHashMapForListOfAccessions(listOfExperimentAccessions,Scope.idf,listOfEFOAccessions);
 			HashMap<String,Integer> idfHash = getCountHashMapForListOfAccessions(listOfExperimentAccessions,Scope.sdrf,listOfEFOAccessions);
 			for(String accession:listOfExperimentAccessions){
-				returnHashMap.put(accession,Integer.valueOf(idfHash.get(accession))+Integer.valueOf(sdrfHash.get(accession)));
+				if(idfHash.containsKey(accession)&&sdrfHash.containsKey(accession)){
+					returnHashMap.put(accession,Integer.valueOf(idfHash.get(accession))+Integer.valueOf(sdrfHash.get(accession)));	
+				}
 			}
 			return returnHashMap;
 		}else{
@@ -568,10 +570,10 @@ public class Kama {
 				
 				try {
 					temp_sdrf = File.createTempFile("kama_", ".tmp");
-					temp_sdrf.deleteOnExit();
+//					temp_sdrf.deleteOnExit();
 					
 					temp_idf=File.createTempFile("kama_", ".tmp");
-					temp_idf.deleteOnExit();
+//					temp_idf.deleteOnExit();
 					
 					fos_sdrf = new FileOutputStream(temp_sdrf);
 					fos_idf = new FileOutputStream(temp_idf);
@@ -602,7 +604,7 @@ public class Kama {
 						System.out.println(idfFile + "\tFile Received");
 						hashOfAccessionFilesForIDF.put(accession, temp_idf);
 					}else{
-						System.out.println(sdrfFile + "\tFailed");
+						System.out.println(idfFile + "\tFailed");
 					}
 					
 				} catch (IOException e) {
@@ -611,7 +613,7 @@ public class Kama {
 					try{
 						if(fos_sdrf!=null){
 							fos_sdrf.close();
-							fos_idf.close();							
+							fos_idf.close();
 						}
 					}catch (IOException e) {
 						e.printStackTrace();
