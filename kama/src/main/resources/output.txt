@@ -1,4 +1,0 @@
-#AccessionId	Assays	IDF	SDRF	Terms
-E-TABM-721	71	6	212	spleen:108;thymus:110;
-E-MEXP-2895	8	0	0	
-E-MEXP-2894	18	0	0	
