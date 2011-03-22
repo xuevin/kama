@@ -26,13 +26,13 @@ public class App
 
 	public static void main( String[] args ){
 	    boolean displaySummary = false;
-	    boolean doExtra = false;
+	    boolean export = false;
 
     	// Make options
     	Options cliOptions = new Options();
     	cliOptions.addOption("h","help",false,"help");
     	cliOptions.addOption("s","summary",false,"display summary statistics on IDF/SDRF");
-    	cliOptions.addOption("x","extra",false,"display summary statistics, use synonymns, and save all files to directory");
+    	cliOptions.addOption("x","export",false,"display summary statistics, and save all files to directory");
 
     	Option output = OptionBuilder.withArgName("output.txt").hasArg().withDescription("use given file for output").isRequired().create("output");
     	Option owlfile = OptionBuilder.withArgName("file.owl").hasArg().withDescription("use given owl file. Defaults to v142").create("owlfile");
@@ -73,7 +73,7 @@ public class App
 				displaySummary=true;
 			if(cmd.hasOption("x")){
 				displaySummary=true;
-				doExtra=true;
+				export=true;
 			}
 			
 			// Continue only if:
@@ -83,21 +83,13 @@ public class App
 			if(inputEFOList!=null && inputExperimentList!=null && outputFileString!=null){
 				Kama kamaInstance;
 				
-				if(doExtra){
-					if(owlFileString!=null){
-						kamaInstance= new KamaExtra(new File(owlFileString));
-					}else{
-						kamaInstance= new KamaExtra();
-					}	
+		
+				//Determine is a custom EFO was entered
+				if(owlFileString!=null){
+					kamaInstance= new Kama(new File(owlFileString));
 				}else{
-					//Determine is a custom EFO was entered
-					if(owlFileString!=null){
-						kamaInstance= new Kama(new File(owlFileString));
-					}else{
-						kamaInstance= new Kama();
-					}	
-				}
-				
+					kamaInstance= new Kama();
+				}	
 
 				//Turn files into java objects
 				ArrayList<String> listOfExperimentAccessions = FileManipulators.fileToArrayList(new File(inputExperimentList));
@@ -109,19 +101,24 @@ public class App
 				if(displaySummary){
 					HashMap<String,Integer> idfCount = kamaInstance.getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.idf,listOfEFOAccessionIds);
 					HashMap<String,Integer> sdrfCount = kamaInstance.getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.sdrf,listOfEFOAccessionIds);
+					HashMap<String,Integer> assayCount = kamaInstance.getCountOfAssaysPerExperiment(listOfExperimentAccessions);
+
+					
 					if(idfCount.size()!=sdrfCount.size()){
 						System.err.println("There was an error fetching files. SDRF files are not equal to IDF Files");
 						System.err.println("Will Print Out Experiments That Have both SDRF and IDFs");
 					}
-					String outString ="";
-					outString+=("#AccessionId\tIDF\tSDRF\tTerms");
+					StringBuilder outString = new StringBuilder();
+					
+					outString.append("#AccessionId\tAssays\tIDF\tSDRF\tTerms");
 					for(String accession:listOfExperimentAccessions){
 						if(idfCount.get(accession)!=null && sdrfCount.get(accession)!=null){
-							outString+=("\n");
-							outString+=(accession+"\t");
-							outString+=(idfCount.get(accession)+"\t");
-							outString+=(sdrfCount.get(accession)+"\t");
-							outString+=(kamaInstance.getCountOfEachTermInExperimentAsString(accession, Scope.both, listOfEFOAccessionIds));	
+							outString.append("\n");
+							outString.append(accession+"\t");
+							outString.append(assayCount.get(accession).toString()+"\t");
+							outString.append(idfCount.get(accession)+"\t");
+							outString.append(sdrfCount.get(accession)+"\t");
+							outString.append(kamaInstance.getCountOfEachTermInExperimentAsString(accession, Scope.both, listOfEFOAccessionIds));	
 						}else{
 							System.out.println(accession + " does not have both Magetab files");
 							continue;	
@@ -129,16 +126,17 @@ public class App
 						
 					}
 					//Write the file
-					FileManipulators.stringToFile(outputFileString,outString);
+					FileManipulators.stringToFile(outputFileString,outString.toString());
 					
 					
-					if(doExtra){
-						HashMap<String, File> idfHash = ((KamaExtra)kamaInstance).getIDFHash();
-						HashMap<String, File> sdrfHash = ((KamaExtra) kamaInstance).getSDRFHash();
+					if(export){
+						HashMap<String, File> idfHash = kamaInstance.getCompleteIDFHash();
+						HashMap<String, File> sdrfHash =  kamaInstance.getCompleteSDRFHash();
 						HashMap<String,Integer> bothCount = kamaInstance.getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.both,listOfEFOAccessionIds);
 						
 						File outFile = new File(outputFileString);
 						String outDir = outFile.getParent();
+						
 						//Make top level directories
 						System.out.println("Making top level directories...");
 						File yesdir = new File(outDir+"/positive");

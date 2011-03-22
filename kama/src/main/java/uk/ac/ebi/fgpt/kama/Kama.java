@@ -37,24 +37,22 @@ public class Kama {
 	    sdrf, idf ,both
 	}
 	
-	protected FileOntologyService ontoService;
-	protected String arrayExpressFtp = "ftp.ebi.ac.uk";
-	protected String arrayExpressFtpPath = "/pub/databases/microarray/data/experiment/";
-	protected HashMap<String,File> hashOfAccessionFilesForSDRF;
-	protected HashMap<String,File> hashOfAccessionFilesForIDF;
+	private FileOntologyService ontoService;
+	private String arrayExpressFtp = "ftp.ebi.ac.uk";
+	private String arrayExpressFtpPath = "/pub/databases/microarray/data/experiment/";
+	private HashMap<String,File> hashOfAccessionFilesForSDRF=new HashMap<String, File>();
+	private HashMap<String,File> hashOfAccessionFilesForIDF=new HashMap<String, File>();
+	private HashMap<String,Integer> hashOfExperimentAccessionToCountOfAssays = new HashMap<String, Integer>();
 	
 	/** The EFO to ArrayList<String> hashmap that stores children so that an OWL does not need to be 
 	 * 	parsed multiple times */
-	protected HashMap<String,ArrayList<String>> hashOfEFOChildrenTerms;
+	protected HashMap<String,ArrayList<String>> hashOfEFOChildrenTerms=new HashMap<String, ArrayList<String>>();
 	
 
 	//Default uses version 142 of EFO;
 	public Kama(){
     	try {
 			ontoService = new FileOntologyService(this.getClass().getClassLoader().getResource("EFO_inferred_v142.owl").toURI());
-			hashOfAccessionFilesForSDRF=new HashMap<String, File>();
-			hashOfAccessionFilesForIDF=new HashMap<String, File>();
-			hashOfEFOChildrenTerms=new HashMap<String, ArrayList<String>>();
 		} catch (URISyntaxException e) {
 			System.err.println("DEFAULT EFO_inferred_v142.owl IS NOT FOUND");
 			e.printStackTrace();
@@ -64,15 +62,11 @@ public class Kama {
 	//Custom EFO/OWL file
 	public Kama(File owlFile){
     	ontoService = new FileOntologyService(owlFile.toURI());
-    	hashOfAccessionFilesForSDRF=new HashMap<String, File>();
-		hashOfAccessionFilesForIDF=new HashMap<String, File>();
-		hashOfEFOChildrenTerms=new HashMap<String, ArrayList<String>>();
-
 	}
 	
 	
 	/**
-	 * Gets a list of all the EFO children and the EFO itself for every EFOAccession in this list.
+	 * Gets a list of all the EFO children, the EFO itself and all related synonyms for each EFOAccession in this list.
 	 *
 	 * @param listOfEFOAccessionIds the list of EFO classes for which you want to retrieve the children from.
 	 * @return an Arraylist of the all the EFO children of the EFO classes. 
@@ -88,8 +82,10 @@ public class Kama {
 					if(parent!=null){
 						listOfChildren = new ArrayList<String>();
 						listOfChildren.add(parent.getLabel());
+						listOfChildren.addAll(ontoService.getSynonyms(parent)); // Add Synonymns
 						for(OntologyTerm ot : ontoService.getAllChildren(parent)){
 							listOfChildren.add(ot.getLabel());
+							listOfChildren.addAll(ontoService.getSynonyms(ot));//Include Synonymns
 						}
 						hashOfEFOChildrenTerms.put(efoAccessionID, listOfChildren);
 					}else{
@@ -529,105 +525,139 @@ public class Kama {
 		return output;
 		
 	}
+	public HashMap<String,Integer> getCountOfAssaysPerExperiment(ArrayList<String> listOfExperimentAccessions){
+		HashMap<String, Integer> returnHash = new HashMap<String, Integer>();
+		
+		downloadFilesFromFTP(listOfExperimentAccessions);
+		
+		for(String experimentAccession:listOfExperimentAccessions){
+			
+			if(hashOfExperimentAccessionToCountOfAssays.get(experimentAccession)==null){
+				//File exists
+				if(hashOfAccessionFilesForSDRF.get(experimentAccession)!=null){
+					String[][] sdrf2D = stringToTable(getPassageFromFile(hashOfAccessionFilesForSDRF.get(experimentAccession)));
+					hashOfExperimentAccessionToCountOfAssays.put(experimentAccession, sdrf2D.length-1);	
+				}
+			}else{
+				//Do nothing extra
+			}
+			returnHash.put(experimentAccession, hashOfExperimentAccessionToCountOfAssays.get(experimentAccession));
+		}
+		return returnHash;
+		
+	}
+	/**
+	 * Gets the experimentAccession to IDF File hash
+	 * @return experimentAccession to IDF File hash.
+	 */
+	public HashMap<String, File> getCompleteIDFHash(){
+		return hashOfAccessionFilesForIDF;
+	}
+	/**
+	 * Gets the experimentAccession to SDRF File hash
+	 * @return experimentAccession to SDRF File hash.
+	 */
+	public HashMap<String, File> getCompleteSDRFHash(){
+		return hashOfAccessionFilesForSDRF;
+	}
+	/**
+		 * Download files from FTP.
+		 * If the file exists, it does not attempt to redownload it.
+		 *
+		 * @param listOfExperimentAccessions the list of experiment accessions
+		 */
+		public void downloadFilesFromFTP(ArrayList<String> listOfExperimentAccessions){
+			
+			FTPClient client = new FTPClient();
+			FileOutputStream fos_sdrf = null;
+			FileOutputStream fos_idf = null;
+	
+			File temp_sdrf = null;
+			File temp_idf = null;
+			
+			
+			
+			try {
+				client.connect(arrayExpressFtp);
+				client.login("anonymous", "");
+				
+				for(String accession:listOfExperimentAccessions){
+					//Only download the files which are needed
+					if(hashOfAccessionFilesForSDRF.containsKey(accession) &&
+							hashOfAccessionFilesForIDF.containsKey(accession)){
+						continue;
+					}
+					
+					try {
+						temp_sdrf = File.createTempFile("kama_", ".tmp");
+	//					temp_sdrf.deleteOnExit();
+						
+						temp_idf=File.createTempFile("kama_", ".tmp");
+	//					temp_idf.deleteOnExit();
+						
+						fos_sdrf = new FileOutputStream(temp_sdrf);
+						fos_idf = new FileOutputStream(temp_idf);
+	
+						String pipeline = accession.substring(2,6);
+						String sdrfFile = accession+".sdrf.txt";
+						String idfFile = accession+".idf.txt";
+						
+						client.retrieveFile(arrayExpressFtpPath+
+								pipeline+"/"+
+								accession+"/"+
+								sdrfFile, fos_sdrf);
+						
+						if(client.getReplyString().contains("226")){
+							System.out.println(sdrfFile + "\tFile Received");
+							hashOfAccessionFilesForSDRF.put(accession, temp_sdrf);
+						}else{
+							System.out.println(sdrfFile + "\tFailed");
+						}
+						
+	
+						client.retrieveFile(arrayExpressFtpPath+
+								pipeline+"/"+
+								accession+"/"+
+								idfFile, fos_idf);
+						
+						if(client.getReplyString().contains("226")){
+							System.out.println(idfFile + "\tFile Received");
+							hashOfAccessionFilesForIDF.put(accession, temp_idf);
+						}else{
+							System.out.println(idfFile + "\tFailed");
+						}
+						
+					} catch (IOException e) {
+						e.printStackTrace();
+					}finally{
+						try{
+							if(fos_sdrf!=null){
+								fos_sdrf.close();
+								fos_idf.close();
+							}
+						}catch (IOException e) {
+							e.printStackTrace();
+						}
+					}	
+				}
+				client.disconnect();
+			} catch (SocketException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	/**
 	 * Download single accession file from ftp. Basically, it wraps an arraylist around the accession and
 	 * calls the other download method
 	 *
 	 * @param experimentAccessionID is the experiment accession ids
 	 */
-	private void downloadFilesFromFTP(String experimentAccessionID){
+	public void downloadFilesFromFTP(String experimentAccessionID){
 		ArrayList<String> temp = new ArrayList<String>();
 		temp.add(experimentAccessionID);
 		downloadFilesFromFTP(temp);
 	}
-	/**
-	 * Download files from FTP.
-	 * If the file exists, it does not attempt to redownload it.
-	 *
-	 * @param listOfExperimentAccessions the list of experiment accessions
-	 */
-	private void downloadFilesFromFTP(ArrayList<String> listOfExperimentAccessions){
-		
-		FTPClient client = new FTPClient();
-		FileOutputStream fos_sdrf = null;
-		FileOutputStream fos_idf = null;
-
-		File temp_sdrf = null;
-		File temp_idf = null;
-		
-		
-		
-		try {
-			client.connect(arrayExpressFtp);
-			client.login("anonymous", "");
-			
-			for(String accession:listOfExperimentAccessions){
-				//Only download the files which are needed
-				if(hashOfAccessionFilesForSDRF.containsKey(accession) &&
-						hashOfAccessionFilesForIDF.containsKey(accession)){
-					continue;
-				}
-				
-				try {
-					temp_sdrf = File.createTempFile("kama_", ".tmp");
-//					temp_sdrf.deleteOnExit();
-					
-					temp_idf=File.createTempFile("kama_", ".tmp");
-//					temp_idf.deleteOnExit();
-					
-					fos_sdrf = new FileOutputStream(temp_sdrf);
-					fos_idf = new FileOutputStream(temp_idf);
-
-					String pipeline = accession.substring(2,6);
-					String sdrfFile = accession+".sdrf.txt";
-					String idfFile = accession+".idf.txt";
-					
-					client.retrieveFile(arrayExpressFtpPath+
-							pipeline+"/"+
-							accession+"/"+
-							sdrfFile, fos_sdrf);
-					
-					if(client.getReplyString().contains("226")){
-						System.out.println(sdrfFile + "\tFile Received");
-						hashOfAccessionFilesForSDRF.put(accession, temp_sdrf);
-					}else{
-						System.out.println(sdrfFile + "\tFailed");
-					}
-					
-
-					client.retrieveFile(arrayExpressFtpPath+
-							pipeline+"/"+
-							accession+"/"+
-							idfFile, fos_idf);
-					
-					if(client.getReplyString().contains("226")){
-						System.out.println(idfFile + "\tFile Received");
-						hashOfAccessionFilesForIDF.put(accession, temp_idf);
-					}else{
-						System.out.println(idfFile + "\tFailed");
-					}
-					
-				} catch (IOException e) {
-					e.printStackTrace();
-				}finally{
-					try{
-						if(fos_sdrf!=null){
-							fos_sdrf.close();
-							fos_idf.close();
-						}
-					}catch (IOException e) {
-						e.printStackTrace();
-					}
-				}	
-			}
-			client.disconnect();
-		} catch (SocketException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
 	/**
 	 * String to table method
 	 *
@@ -665,11 +695,11 @@ public class Kama {
 		try {
 			br = new BufferedReader(new FileReader(file));
 			String text;
-			String passage="";
+			StringBuilder passage= new StringBuilder();
 			while((text= br.readLine())!=null){
-				passage+=text+" \n"; //Space is because monq does not recognize line break!
+				passage.append(text+" \n"); //Space is because monq does not recognize line break!
 			}
-			return passage;
+			return passage.toString().trim();
 			
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();

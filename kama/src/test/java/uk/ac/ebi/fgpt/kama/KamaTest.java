@@ -423,4 +423,19 @@ public class KamaTest {
 		
 		assertEquals(sum,hashOfAccessionToCount.get("E-GEOD-23501").intValue());
 	}
+	@Test
+	public void showThatAssayCountsAreCorrect(){
+		Kama kama = new Kama();
+		
+		ArrayList<String> listOfExperimentAccessions = new ArrayList<String>();
+		listOfExperimentAccessions.add("E-GEOD-13367");
+		listOfExperimentAccessions.add("E-GEOD-23501");
+		listOfExperimentAccessions.add("E-TABM-721");
+		HashMap<String, Integer> hash = kama.getCountOfAssaysPerExperiment(listOfExperimentAccessions);
+		assertEquals(56, hash.get("E-GEOD-13367").intValue());
+		assertEquals(69, hash.get("E-GEOD-23501").intValue());
+		assertEquals(71, hash.get("E-TABM-721").intValue());
+
+		
+	}
 }
