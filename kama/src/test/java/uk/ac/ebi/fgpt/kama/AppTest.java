@@ -136,32 +136,32 @@ public class AppTest extends TestCase {
 	public void testMain() {
 		String[] args = new String[7];
 		args[0] = "-input";
-		args[1] = "src/main/resources/accessiontest.txt";
+		args[1] = "src/test/resources/accessiontest.txt";
 		args[2] = "-output";
-		args[3] = "src/main/resources/output.txt";
+		args[3] = "src/test/resources/output.txt";
 		args[4] = "-efo";
-		args[5] = "src/main/resources/efo.txt";
+		args[5] = "src/test/resources/efo.txt";
 		args[6] = "-s";
 		App.main(args);
 	}
 	public void testMain2(){
 		String[] args2 = new String[6];
 		args2[0] = "-input";
-		args2[1] = "src/main/resources/accessiontest.txt";
+		args2[1] = "src/test/resources/accessiontest.txt";
 		args2[2] = "-output";
-		args2[3] = "src/main/resources/output.txt";
+		args2[3] = "src/test/resources/output.txt";
 		args2[4] = "-efo";
-		args2[5] = "src/main/resources/efo.txt";
+		args2[5] = "src/test/resources/efo.txt";
 		App.main(args2);
 	}
 	public void testMain3(){
 		String[] args2 = new String[7];
 		args2[0] = "-input";
-		args2[1] = "src/main/resources/accessiontest.txt";
+		args2[1] = "src/test/resources/accessiontest.txt";
 		args2[2] = "-output";
-		args2[3] = "src/main/resources/output.txt";
+		args2[3] = "src/test/resources/output.txt";
 		args2[4] = "-efo";
-		args2[5] = "src/main/resources/efo.txt";
+		args2[5] = "src/test/resources/efo.txt";
 		args2[6] = "-x";
 		App.main(args2);
 	}
