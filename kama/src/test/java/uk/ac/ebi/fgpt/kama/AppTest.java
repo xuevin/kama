@@ -138,7 +138,7 @@ public class AppTest extends TestCase {
 		args[0] = "-input";
 		args[1] = "src/test/resources/accessiontest.txt";
 		args[2] = "-output";
-		args[3] = "src/test/resources/output.txt";
+		args[3] = "target/output.txt";
 		args[4] = "-efo";
 		args[5] = "src/test/resources/efo.txt";
 		args[6] = "-s";
@@ -149,7 +149,7 @@ public class AppTest extends TestCase {
 		args2[0] = "-input";
 		args2[1] = "src/test/resources/accessiontest.txt";
 		args2[2] = "-output";
-		args2[3] = "src/test/resources/output.txt";
+		args2[3] = "target/output.txt";
 		args2[4] = "-efo";
 		args2[5] = "src/test/resources/efo.txt";
 		App.main(args2);
@@ -159,7 +159,7 @@ public class AppTest extends TestCase {
 		args2[0] = "-input";
 		args2[1] = "src/test/resources/accessiontest.txt";
 		args2[2] = "-output";
-		args2[3] = "src/test/resources/output.txt";
+		args2[3] = "target/output.txt";
 		args2[4] = "-efo";
 		args2[5] = "src/test/resources/efo.txt";
 		args2[6] = "-x";
