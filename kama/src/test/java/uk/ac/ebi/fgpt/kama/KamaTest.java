@@ -357,8 +357,10 @@ public class KamaTest {
 		Kama kama = new Kama();
 		ArrayList<String> accessionIDS = new ArrayList<String>();
 		accessionIDS.add("E-TABM-721");
+		accessionIDS.add("E-GEOD-9171");
 		assertEquals(218,kama.getCountHashMapForListOfAccessions(accessionIDS, Scope.both, "EFO_0000798").get("E-TABM-721").intValue());
-		
+		assertEquals(0,kama.getCountHashMapForListOfAccessions(accessionIDS, Scope.both, "EFO_0000798").get("E-GEOD-9171").intValue());
+
 	}
 	@Test
 	public void testgetChildrenOfEFOAccessionPlusItself_EFOIsNotFound(){
@@ -380,14 +382,24 @@ public class KamaTest {
 	@Test
 	public void testGetCountHashMapForExperimentCELFiles(){
 		Kama kama = new Kama();
+		HashMap<String,Integer> hashMap2 = kama.getCountHashMapForExperimentCELFiles("E-GEOD-11941", "EFO_0000798");
+		int sum2 = 0;
+		for(String key:hashMap2.keySet()){
+			sum2+= hashMap2.get(key).intValue();	
+		}
+		ArrayList<String> listOfExperimentAccessions = new ArrayList<String>();
+		listOfExperimentAccessions.add("E-GEOD-11941");
+		assertEquals(sum2, kama.getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.sdrf, "EFO_0000798").get("E-GEOD-11941").intValue());
+		
+		
 		HashMap<String,Integer> hashMap = kama.getCountHashMapForExperimentCELFiles("E-TABM-721", "EFO_0000798");
 		int sum = 0;
 		for(String key:hashMap.keySet()){
 			sum+= hashMap.get(key).intValue();	
 		}
-		ArrayList<String> listOfExperimentAccessions = new ArrayList<String>();
-		listOfExperimentAccessions.add("E-TABM-721");
-		assertEquals(sum, kama.getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.sdrf, "EFO_0000798").get("E-TABM-721").intValue());
+		ArrayList<String> listOfExperimentAccessions1 = new ArrayList<String>();
+		listOfExperimentAccessions1.add("E-TABM-721");
+		assertEquals(sum, kama.getCountHashMapForListOfAccessions(listOfExperimentAccessions1, Scope.sdrf, "EFO_0000798").get("E-TABM-721").intValue());
 	}
 	@Test
 	public void testGetCountOfEachTermPerSample(){

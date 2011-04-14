@@ -173,13 +173,13 @@ public class App
 					
 				}else{
 					// Sample Level Output
-					String outString = "";
-					outString+=("#AccessionId\tSample");
+					StringBuilder outString = new StringBuilder();
+					outString.append("#AccessionId\tSample");
 					for(String efoId:listOfEFOAccessionIds){
-						outString+=("\t"+efoId+"_idf");
-						outString+=("\t"+efoId+"_sample");
+						outString.append("\t"+efoId+"_idf");
+						outString.append("\t"+efoId+"_sample");
 					}
-					outString+="\tTerms";
+					outString.append("\tTerms\n");
 
 					
 					//For each efo class, save the experimentToCount hashmap on the idf scope. 
@@ -225,10 +225,11 @@ public class App
 							
 							
 							System.out.println(row);
-							outString+=row;
+							outString.append(row);
+							outString.append("\n");
 						}
 					}
-					FileManipulators.stringToFile(outputFileString, outString);
+					FileManipulators.stringToFile(outputFileString, outString.toString());
 				}
 			}else{
 				

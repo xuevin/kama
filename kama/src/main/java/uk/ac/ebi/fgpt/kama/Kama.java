@@ -233,7 +233,6 @@ public class Kama {
 		String passage = getPassageFromFile(file);	
 		if(!passage.isEmpty()){
 			passage = passage.replaceAll("\\s+$", "");
-
 			
 			String[] rowString = passage.split("\n");
 			String[][] table = stringToTable(passage);
@@ -335,10 +334,13 @@ public class Kama {
 			return returnHash;
 		}
 		String passage = getPassageFromFile(file);
+
+		
 		// Read a sdrf file and put it into a 2d array
 		if (!passage.isEmpty()) {
 			passage = passage.replaceAll("\\s+$", "");
 
+			
 			String[] rowString = passage.split("\n");
 			String[][] table = stringToTable(passage);
 
@@ -665,6 +667,7 @@ public class Kama {
 	 * @return the string[][] is the 2d array representation of table ([row][column])
 	 */
 	private String[][] stringToTable(String oneLongString){
+		
 		//01_Create Array Of rows by splitting on new line
 		String[] rows = oneLongString.split("\\r?\\n");
 		
@@ -675,7 +678,20 @@ public class Kama {
 		//03_For each row, split on the tab and put the column into the row array
 		for(int i = 0; i<rows.length; i++){
 			String[] column = rows[i].split("\\t");
-			rowArray[i]=column;
+			if(column.length<columnsLength){
+				for(int k = 0;k<columnsLength;k++){
+					if(k<column.length){
+						rowArray[i][k]=column[k];
+					}else{
+						rowArray[i][k]="";
+					}
+				}
+				
+			}else if(column.length==columnsLength){
+				rowArray[i]=column;
+			}else{
+				System.err.println("There is a row that is longer than the first row.");
+			}
 		}
 		return rowArray;
 	}
