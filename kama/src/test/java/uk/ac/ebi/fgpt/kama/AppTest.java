@@ -165,4 +165,17 @@ public class AppTest extends TestCase {
 		args2[6] = "-x";
 		App.main(args2);
 	}
+	public void testMain4(){
+		String[] args2 = new String[9];
+		args2[0] = "-input";
+		args2[1] = "src/test/resources/accessiontest.txt";
+		args2[2] = "-output";
+		args2[3] = "target/output.txt";
+		args2[4] = "-efo";
+		args2[5] = "src/test/resources/celllineobo.txt";
+		args2[6] = "-owlfile";
+		args2[7] = "src/test/resources/CELL_SP_DIS_ORG_5_05_09_v1.0.obo";
+		args2[8] = "-s";
+		App.main(args2);
+	}
 }

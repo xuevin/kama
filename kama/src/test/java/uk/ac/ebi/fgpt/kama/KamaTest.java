@@ -48,6 +48,18 @@ public class KamaTest {
 		
 	}
 	@Test
+	public void testIfKamaCanBeInstantiatedFromOBO(){
+		File owlFile;
+		try {
+			owlFile = new File(getClass().getClassLoader().getResource("CELL_SP_DIS_ORG_5_05_09_v1.0.obo").toURI());
+			Kama testKama = new Kama(owlFile);
+			assertNotNull(testKama);
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	@Test
 	public void testGetChildrenOfEFOAccession() {
 		Kama testKama = new Kama();
 		ArrayList<String> listOfChildren = testKama.getChildrenOfEFOAccessionPlusItself("EFO_0000798");
