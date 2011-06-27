@@ -1,6 +1,9 @@
 package uk.ac.ebi.fgpt.kama;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -62,7 +65,7 @@ public class KamaTest {
 	@Test
 	public void testGetChildrenOfEFOAccession() {
 		Kama testKama = new Kama();
-		ArrayList<String> listOfChildren = testKama.getChildrenOfEFOAccessionPlusItself("EFO_0000798");
+		List<String> listOfChildren = testKama.getRelatedTerms("EFO_0000798");
 		
 		if(!listOfChildren.contains("thymus")){
 			fail("Could not find thymus");
@@ -106,7 +109,7 @@ public class KamaTest {
 	public void assertPassageIsFromBlood(){
 		String passage = "the thymus ran far into blood";
 		Kama kama = new Kama();
-		ArrayList<String> listOfChildren = kama.getChildrenOfEFOAccessionPlusItself("EFO_0000798");
+		List<String> listOfChildren = kama.getRelatedTerms("EFO_0000798");
 		
 		boolean found = false;
 		for(String dictWord : listOfChildren){
@@ -147,7 +150,7 @@ public class KamaTest {
 	public void assertPassageIsNotFromBlood(){
 		String passage = "the happy chicken ran far";
 		Kama kama = new Kama();
-		ArrayList<String> listOfChildren = kama.getChildrenOfEFOAccessionPlusItself("EFO_0000798");
+		List<String> listOfChildren = kama.getRelatedTerms("EFO_0000798");
 		
 		boolean found = false;
 		for(String dictWord : listOfChildren){
@@ -187,9 +190,9 @@ public class KamaTest {
 	@Test
 	public void testPassageContainsEFO(){
 		Kama kama = new Kama();
-		assertEquals(false, kama.getIfPassageContainsEFO("there is no reference to it here", "EFO_0000798"));
-		assertEquals(true,kama.getIfPassageContainsEFO("thymus is found", "EFO_0000798"));
-		assertEquals(false,kama.getIfPassageContainsEFO("thymus", "EFO_0000798")); //Requires a space or period following
+		assertEquals(false, kama.getIfPassageContainsOntologyTerm("there is no reference to it here", "EFO_0000798"));
+		assertEquals(true,kama.getIfPassageContainsOntologyTerm("thymus is found", "EFO_0000798"));
+		assertEquals(false,kama.getIfPassageContainsOntologyTerm("thymus", "EFO_0000798")); //Requires a space or period following
 	}
 	@Test
 	public void testFTP(){
@@ -290,7 +293,7 @@ public class KamaTest {
 	@Test
 	public void testIfAppUsesParentTerm(){
 		Kama kama = new Kama();
-		assertEquals(true, kama.getIfPassageContainsEFO("haemopoietic system is included", "EFO_0000798"));
+		assertEquals(true, kama.getIfPassageContainsOntologyTerm("haemopoietic system is included", "EFO_0000798"));
 	}
 	@Test
 	public void testThreeFieldsForTrueFalseFetches(){
@@ -335,10 +338,10 @@ public class KamaTest {
 	@Test
 	public void testPassageCountOfEFO(){
 		Kama kama = new Kama();
-		assertEquals(2, kama.getPassageCountOfEFO("blood blood blood", "EFO_0000798"));
-		assertEquals(3, kama.getPassageCountOfEFO("blood blood blood.", "EFO_0000798"));
-		assertEquals(4, kama.getPassageCountOfEFO("blood blood blood thymus ", "EFO_0000798"));
-		assertEquals(4, kama.getPassageCountOfEFO("blood blood \n blood thymus ", "EFO_0000798"));
+		assertEquals(2, kama.getTotalCountOfRelatedOntologyTermsInPassage("blood blood blood", "EFO_0000798"));
+		assertEquals(3, kama.getTotalCountOfRelatedOntologyTermsInPassage("blood blood blood.", "EFO_0000798"));
+		assertEquals(4, kama.getTotalCountOfRelatedOntologyTermsInPassage("blood blood blood thymus ", "EFO_0000798"));
+		assertEquals(4, kama.getTotalCountOfRelatedOntologyTermsInPassage("blood blood \n blood thymus ", "EFO_0000798"));
 
 	}
 	@Test
@@ -377,7 +380,7 @@ public class KamaTest {
 	@Test
 	public void testgetChildrenOfEFOAccessionPlusItself_EFOIsNotFound(){
 		Kama kama = new Kama();
-		assertNull(kama.getChildrenOfEFOAccessionPlusItself("EFO_NOTFOUND"));
+		assertNull(kama.getRelatedTerms("EFO_NOTFOUND"));
 	}
 	@Test
 	public void testWhatHappensWhenFileDoesNotHaveArrayDataFileColumn(){
