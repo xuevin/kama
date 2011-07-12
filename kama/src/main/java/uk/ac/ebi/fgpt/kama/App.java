@@ -16,6 +16,7 @@ import org.apache.commons.cli.PosixParser;
 import org.apache.commons.io.FileUtils;
 
 import uk.ac.ebi.fgpt.kama.Kama.Scope;
+import uk.ac.ebi.ontocat.OntologyServiceException;
 
 /**
  * KAMA - quicK pAss for Meta Analysis Kama is an application used to quickly annotate SDRF and IDF files. It
@@ -27,7 +28,7 @@ import uk.ac.ebi.fgpt.kama.Kama.Scope;
  */
 public class App {
   
-  public static void main(String[] args) {
+  public static void main(String[] args) throws OntologyServiceException, IOException, MonqException {
     boolean displaySummary = false;
     boolean export = false;
     
@@ -249,9 +250,6 @@ public class App {
     } catch (ParseException e) {
       // System.err.println( "Parsing failed.  Reason: " + e.getMessage() );
       formatter.printHelp("kama", cliOptions, true);
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
     }
   }
 }
