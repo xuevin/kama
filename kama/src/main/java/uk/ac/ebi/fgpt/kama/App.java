@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -102,11 +103,11 @@ public class App {
         // Summary Mode - display summary on the idf/sdrf level
         // and the default mode which is on the sample level
         if (displaySummary) {
-          HashMap<String,Integer> idfCount = kamaInstance.getCountHashMapForListOfAccessions(
+          Map<String,Integer> idfCount = kamaInstance.getCountMapForListOfAccessions(
             listOfExperimentAccessions, Scope.idf, listOfOntologyAccessionIds);
-          HashMap<String,Integer> sdrfCount = kamaInstance.getCountHashMapForListOfAccessions(
+          Map<String,Integer> sdrfCount = kamaInstance.getCountMapForListOfAccessions(
             listOfExperimentAccessions, Scope.sdrf, listOfOntologyAccessionIds);
-          HashMap<String,Integer> assayCount = kamaInstance
+          Map<String,Integer> assayCount = kamaInstance
               .getCountOfAssaysPerExperiment(listOfExperimentAccessions);
           
           if (idfCount.size() != sdrfCount.size()) {
@@ -135,9 +136,9 @@ public class App {
           FileManipulators.stringToFile(outputFileString, outString.toString());
           
           if (export) {
-            HashMap<String,File> idfHash = kamaInstance.getCompleteIDFHash();
-            HashMap<String,File> sdrfHash = kamaInstance.getCompleteSDRFHash();
-            HashMap<String,Integer> bothCount = kamaInstance.getCountHashMapForListOfAccessions(
+            Map<String,File> idfHash = kamaInstance.getCompleteIDFMap();
+            Map<String,File> sdrfHash = kamaInstance.getCompleteSDRFMap();
+            Map<String,Integer> bothCount = kamaInstance.getCountMapForListOfAccessions(
               listOfExperimentAccessions, Scope.both, listOfOntologyAccessionIds);
             
             File outFile = new File(outputFileString);
@@ -188,17 +189,17 @@ public class App {
           outString.append("\tTerms\n");
           
           // For each ontology class, save the experimentToCount hashmap on the idf scope.
-          HashMap<String,HashMap<String,Integer>> ontologyAccessionIdsToIDFCountHashMap = new HashMap<String,HashMap<String,Integer>>();
+          Map<String,Map<String,Integer>> ontologyAccessionIdsToIDFCountHashMap = new HashMap<String,Map<String,Integer>>();
           for (String ontologyAccessionId : listOfOntologyAccessionIds) {
             ontologyAccessionIdsToIDFCountHashMap.put(ontologyAccessionId, kamaInstance
-                .getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.idf,
+                .getCountMapForListOfAccessions(listOfExperimentAccessions, Scope.idf,
                   ontologyAccessionId));
           }
           
           // For each experiment
           for (String experimentAccession : listOfExperimentAccessions) {
             
-            HashMap<String,Integer> sampleToCountHash = kamaInstance.getCountHashMapForExperimentCELFiles(
+            Map<String,Integer> sampleToCountHash = kamaInstance.getCountMapForExperimentCELFiles(
               experimentAccession, listOfOntologyAccessionIds);
             if (sampleToCountHash.size() == 0) {
               System.out.println(experimentAccession
@@ -208,13 +209,13 @@ public class App {
             
             // For each experiment, and each ontolgyTerm, save the sampleToCount hashMap to save recomputing
             // it at every sample
-            HashMap<String,HashMap<String,Integer>> ontologyTermToSampleCountHashMap = new HashMap<String,HashMap<String,Integer>>();
+            Map<String,Map<String,Integer>> ontologyTermToSampleCountHashMap = new HashMap<String,Map<String,Integer>>();
             for (String ontoAccessionID : listOfOntologyAccessionIds) {
               ontologyTermToSampleCountHashMap.put(ontoAccessionID, kamaInstance
-                  .getCountHashMapForExperimentCELFiles(experimentAccession, ontoAccessionID));
+                  .getCountMapForExperimentCELFiles(experimentAccession, ontoAccessionID));
             }
             
-            HashMap<String,HashMap<String,Integer>> ontologyAccessionIdsToSampleLevelTerm = kamaInstance
+            Map<String,Map<String,Integer>> ontologyAccessionIdsToSampleLevelTerm = kamaInstance
                 .getCountOfEachTermPerSample(experimentAccession, listOfOntologyAccessionIds);
             
             // Just iterate through the samples
@@ -232,7 +233,7 @@ public class App {
                 
               }
               // Put terms
-              HashMap<String,Integer> termsMap = ontologyAccessionIdsToSampleLevelTerm.get(sample);
+              Map<String,Integer> termsMap = ontologyAccessionIdsToSampleLevelTerm.get(sample);
               for (String term : termsMap.keySet()) {
                 row += term + ":" + termsMap.get(term).intValue() + ";";
               }

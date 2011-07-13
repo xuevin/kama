@@ -20,13 +20,10 @@ import monq.jfa.DfaRun;
 import monq.jfa.Nfa;
 import monq.jfa.ReSyntaxException;
 import monq.jfa.actions.Copy;
-import monq.jfa.actions.Printf;
 
 import org.apache.commons.net.ftp.FTPClient;
 
 import uk.ac.ebi.ontocat.OntologyServiceException;
-import uk.ac.ebi.ontocat.OntologyTerm;
-import uk.ac.ebi.ontocat.file.FileOntologyService;
 
 /**
  * Kama - quicK pAss for Meta Analysis
@@ -48,23 +45,24 @@ public class Kama {
     both
   }
   
-  private FileOntologyService ontoService;
   private String arrayExpressFtp = "ftp.ebi.ac.uk";
   private String arrayExpressFtpPath = "/pub/databases/microarray/data/experiment/";
-  private HashMap<String,File> hashOfAccessionFilesForSDRF = new HashMap<String,File>();
-  private HashMap<String,File> hashOfAccessionFilesForIDF = new HashMap<String,File>();
-  private HashMap<String,Integer> hashOfExperimentAccessionToCountOfAssays = new HashMap<String,Integer>();
+  private Map<String,File> mapOfAccessionFilesForSDRF = new HashMap<String,File>();
+  private Map<String,File> mapOfAccessionFilesForIDF = new HashMap<String,File>();
+  private Map<String,Integer> mapOfExperimentAccessionToCountOfAssays = new HashMap<String,Integer>();
+  private OntologyFunctions ontoFunctions;
   
   /**
-   * The 'parent ontology term' to 'ArrayList<String>' hashmap that stores it's children so that an OWL does
-   * not need to be parsed multiple times.
+   * Users will usually use one listOfOntologyIds consistently. By using this map, we can speed up the
+   * retrieval of the dictionary and make sure that the nfa doesn't get created too many times.
    */
-  protected HashMap<String,ArrayList<String>> hashOfOntologyChildrenTerms = new HashMap<String,ArrayList<String>>();
+  private Map<Integer,String[]> mapOfHashCodeToArray = new HashMap<Integer,String[]>();
+  private Map<Integer,Nfa> hashCodeToNfa = new HashMap<Integer,Nfa>();
   
   // Default uses version 142 of EFO as Ontology;
   public Kama() throws OntologyServiceException {
     try {
-      ontoService = new FileOntologyService(this.getClass().getClassLoader().getResource(
+      ontoFunctions = new OntologyFunctions(this.getClass().getClassLoader().getResource(
         "EFO_inferred_v142.owl").toURI());
     } catch (URISyntaxException e) {
       System.err.println("DEFAULT EFO_inferred_v142.owl IS NOT FOUND");
@@ -75,45 +73,36 @@ public class Kama {
   
   // Constructor to use a user defined ontology file (Can be OBO or OWL);
   public Kama(File owlFile) throws OntologyServiceException {
-    ontoService = new FileOntologyService(owlFile.toURI());
+    ontoFunctions = new OntologyFunctions(owlFile.toURI());
   }
   
   /**
-   * Gets a list of all the class's children, the class itself and all related synonyms for each ontology
+   * Gets an array of all the class's children, the class itself and all related synonyms for each ontology
    * accession id in the list.
    * 
    * @param listOfOntologyAccessionIds
    *          the list of ontology accession ids for which you want to retrieve the children from.
-   * @return the list of the all the class's children, the class itself, and related synonyms.
+   * @return an array of the all the class's children, the class itself, and related synonyms.
    */
-  public List<String> getRelatedTerms(String... listOfOntologyAccessionIds) {
+  public String[] getDictionaryOfTermsFromOntologyIds(String... listOfOntologyAccessionIds) {
+    // First check to see if this listOfOntologyAccessionIds has been called before
+    if (mapOfHashCodeToArray.containsKey(listOfOntologyAccessionIds.hashCode())) {
+      return mapOfHashCodeToArray.get(listOfOntologyAccessionIds.hashCode());
+    }
+    
+    // If the application has reached this far, then this is a "new" dictionary.
     ArrayList<String> returnListOfEFO = new ArrayList<String>();
     for (String efoAccessionID : listOfOntologyAccessionIds) {
-      
-      if (hashOfOntologyChildrenTerms.get(efoAccessionID) == null) {
-        try {
-          OntologyTerm parent = ontoService.getTerm(efoAccessionID);
-          ArrayList<String> listOfChildren;
-          if (parent != null) {
-            listOfChildren = new ArrayList<String>();
-            listOfChildren.add(parent.getLabel());
-            listOfChildren.addAll(ontoService.getSynonyms(parent)); // Add Synonymns
-            for (OntologyTerm ot : ontoService.getAllChildren(parent)) {
-              listOfChildren.add(ot.getLabel());
-              listOfChildren.addAll(ontoService.getSynonyms(ot));// Include Synonymns
-            }
-            hashOfOntologyChildrenTerms.put(efoAccessionID, listOfChildren);
-          } else {
-            throw new OntologyServiceException("OntologyTerm is null");
-          }
-        } catch (OntologyServiceException e) {
-          System.err.println("WARNING: ONTOLOGY ACCESSION ID DOES NOT EXIST");
-          return null;
-        }
+      List<String> relatedTerms;
+      if ((relatedTerms = ontoFunctions.getChildrenAndRelatedTerms(efoAccessionID)) != null) {
+        returnListOfEFO.addAll(relatedTerms);
       }
-      returnListOfEFO.addAll(hashOfOntologyChildrenTerms.get(efoAccessionID));
     }
-    return returnListOfEFO;
+    String[] returnArray = new String[returnListOfEFO.size()];
+    returnListOfEFO.toArray(returnArray);
+    
+    mapOfHashCodeToArray.put(listOfOntologyAccessionIds.hashCode(), returnArray);
+    return returnArray;
   }
   
   /**
@@ -129,16 +118,12 @@ public class Kama {
    * @throws MonqException
    */
   public boolean getIfPassageContainsOntologyTerm(String passage, String... listOfOntologyAccessionIds) throws MonqException {
-    List<String> listOfChildren = getRelatedTerms(listOfOntologyAccessionIds);
+    String[] dictionary = getDictionaryOfTermsFromOntologyIds(listOfOntologyAccessionIds);
     
-    boolean found = false;
-    for (String dictWord : listOfChildren) {
-      if (getCountFromPassage(dictWord, passage) != 0) {
-        found = true;
-        break;
-      }
+    if (getCountFromPassage(passage, getNfa(dictionary)).size() != 0) {
+      return true;
     }
-    return found;
+    return false;
   }
   
   /**
@@ -153,18 +138,18 @@ public class Kama {
    */
   public int getTotalCountOfRelatedOntologyTermsInPassage(String passage,
                                                           String... listOfOntologyAccessionIds) throws MonqException {
-    List<String> listOfChildren = getRelatedTerms(listOfOntologyAccessionIds);
+    String[] listOfChildren = getDictionaryOfTermsFromOntologyIds(listOfOntologyAccessionIds);
     int countOfTermsFound = 0;
-    
-    for (String dictWord : listOfChildren) {
-      countOfTermsFound += getCountFromPassage(dictWord, passage);
+    Map<String,Integer> countMap = getCountFromPassage(passage, getNfa(listOfChildren));
+    for (Integer value : countMap.values()) {
+      countOfTermsFound += value.intValue();
     }
     return countOfTermsFound;
   }
   
   /**
-   * Gets the 'experiment accession id' to 'boolean' hashMap that is used to determine whether or not a
-   * certain experiment has a member of the EFO class.
+   * Gets the 'experiment accession id' to 'boolean' map that is used to determine whether or not a certain
+   * experiment has a member of the EFO class.
    * 
    * @param listOfExperimentAccessionIds
    *          the list of experiment accession ids
@@ -172,76 +157,76 @@ public class Kama {
    *          the scope of the search (sdrf or idf or both)
    * @param listOfOntologyAccessionIds
    *          a list of Ontology accession ids
-   * @return the 'experiment accession id' to 'boolean' hashMap that is used to determine whether a certain
+   * @return the 'experiment accession id' to 'boolean' map that is used to determine whether a certain
    *         experiment has a word related to the list of ontology accession ids. ie {E-GEOD-1000=>true}
    * @throws MonqException
    */
-  public HashMap<String,Boolean> getTrueFalseHashMapForListOfAccessions(ArrayList<String> listOfExperimentAccessionIds,
-                                                                        Scope scope,
-                                                                        String... listOfOntologyAccessionIds) throws MonqException {
+  public Map<String,Boolean> getTrueFalseMapForListOfAccessions(ArrayList<String> listOfExperimentAccessionIds,
+                                                                Scope scope,
+                                                                String... listOfOntologyAccessionIds) throws MonqException {
     downloadFilesFromFTP(listOfExperimentAccessionIds);
     
-    HashMap<String,Boolean> returnHashMap = new HashMap<String,Boolean>();
+    Map<String,Boolean> returnMap = new HashMap<String,Boolean>();
     
-    HashMap<String,File> hashMapToUse;
+    Map<String,File> mapToUse;
     if (scope == Scope.sdrf) {
-      hashMapToUse = hashOfAccessionFilesForSDRF;
+      mapToUse = mapOfAccessionFilesForSDRF;
     } else if (scope == Scope.idf) {
-      hashMapToUse = hashOfAccessionFilesForIDF;
+      mapToUse = mapOfAccessionFilesForIDF;
     } else if (scope == Scope.both) {
-      HashMap<String,Boolean> sdrfHash = getTrueFalseHashMapForListOfAccessions(listOfExperimentAccessionIds,
+      Map<String,Boolean> sdrfMap = getTrueFalseMapForListOfAccessions(listOfExperimentAccessionIds,
         Scope.idf, listOfOntologyAccessionIds);
-      HashMap<String,Boolean> idfHash = getTrueFalseHashMapForListOfAccessions(listOfExperimentAccessionIds,
+      Map<String,Boolean> idfMap = getTrueFalseMapForListOfAccessions(listOfExperimentAccessionIds,
         Scope.sdrf, listOfOntologyAccessionIds);
       for (String accession : listOfExperimentAccessionIds) {
-        if ((idfHash.containsKey(accession) && sdrfHash.containsKey(accession))
-            && (idfHash.get(accession) == true || sdrfHash.get(accession) == true)) {
-          returnHashMap.put(accession, true);
+        if ((idfMap.containsKey(accession) && sdrfMap.containsKey(accession))
+            && (idfMap.get(accession) == true || sdrfMap.get(accession) == true)) {
+          returnMap.put(accession, true);
         } else {
-          returnHashMap.put(accession, false);
+          returnMap.put(accession, false);
         }
       }
-      return returnHashMap;
+      return returnMap;
     } else {
       // Theoretically Never Reached
       return null;
     }
     
     for (String accession : listOfExperimentAccessionIds) {
-      File file = hashMapToUse.get(accession);
+      File file = mapToUse.get(accession);
       if (file != null) {
         String passage = getPassageFromFile(file);
         if (passage != "") {
-          returnHashMap.put(accession, getIfPassageContainsOntologyTerm(passage, listOfOntologyAccessionIds));
+          returnMap.put(accession, getIfPassageContainsOntologyTerm(passage, listOfOntologyAccessionIds));
         }
         
       }
     }
     
-    return returnHashMap;
+    return returnMap;
   }
   
   /**
-   * Gets the 'CEL file name' to 'boolean' hashmap that is used to find all the unique CEL files in the SDRF
-   * and determine whether or not the CEL file (as annotated in the SDRF) mentions a term related to the list
-   * Of ontology accessionIds.
+   * Gets the 'CEL file name' to 'boolean' map that is used to find all the unique CEL files in the SDRF and
+   * determine whether or not the CEL file (as annotated in the SDRF) mentions a term related to the list Of
+   * ontology accessionIds.
    * 
    * @param experimentAccession
    *          the experiment accession
    * @param listOfOntologyAccessionIds
    *          a list of EFO accession ids
-   * @return the 'CEL file name' to 'boolean' hashmap for the specified experiment ie {sample.cel=>true}
+   * @return the 'CEL file name' to 'boolean' map for the specified experiment ie {sample.cel=>true}
    * @throws MonqException
    */
-  public HashMap<String,Boolean> getTrueFalseHashMapForExperimentCELFiles(String experimentAccession,
-                                                                          String... listOfOntologyAccessionIds) throws MonqException {
-    HashMap<String,Boolean> returnHash = new HashMap<String,Boolean>();
+  public Map<String,Boolean> getTrueFalseMapForExperimentCELFiles(String experimentAccession,
+                                                                  String... listOfOntologyAccessionIds) throws MonqException {
+    Map<String,Boolean> returnMap = new HashMap<String,Boolean>();
     
     downloadFileFromFTP(experimentAccession);
     
-    File file = hashOfAccessionFilesForSDRF.get(experimentAccession);
+    File file = mapOfAccessionFilesForSDRF.get(experimentAccession);
     if (file == null) {
-      return returnHash;
+      return returnMap;
     }
     String passage = getPassageFromFile(file);
     if (!passage.isEmpty()) {
@@ -261,22 +246,22 @@ public class Kama {
           break;
         }
       }
-      // Put into Hash whether or not row contains EFO
+      // Put into map whether or not row contains EFO
       if (hasADFColumn == true) {
         for (int i = 1; i < table.length; i++) {
           // System.out.println(table[i][adfColumn]+ "\t" +getIfPassageContainsEFO(rowString[i],
           // EFOAccessionId));
           // Make sure that CEL Files which have at least one reference to blood are still reported
-          if (returnHash.get(table[i][adfColumn]) == null) {
-            returnHash.put(table[i][adfColumn], getIfPassageContainsOntologyTerm(rowString[i],
+          if (returnMap.get(table[i][adfColumn]) == null) {
+            returnMap.put(table[i][adfColumn], getIfPassageContainsOntologyTerm(rowString[i],
               listOfOntologyAccessionIds));
           } else {
-            if (returnHash.get(table[i][adfColumn]) == true) {
+            if (returnMap.get(table[i][adfColumn]) == true) {
               // skip
               // Keep true, true
             } else {
               // Replace False with whether or not the passage contains efo
-              returnHash.put(table[i][adfColumn], getIfPassageContainsOntologyTerm(rowString[i],
+              returnMap.put(table[i][adfColumn], getIfPassageContainsOntologyTerm(rowString[i],
                 listOfOntologyAccessionIds));
             }
           }
@@ -285,11 +270,11 @@ public class Kama {
         System.out.println(experimentAccession + " does not have a ADF column");
       }
     }
-    return returnHash;
+    return returnMap;
   }
   
   /**
-   * Gets the 'experiment accession id' to 'integer' hash map that is used to determine how many times a word
+   * Gets the 'experiment accession id' to 'integer' map that is used to determine how many times a word
    * related to the list of ontology accession ids occurs in the experiment
    * 
    * @param listOfExperimentAccessionIds
@@ -298,73 +283,72 @@ public class Kama {
    *          the filetype. Can count IDF, SDRF, or both
    * @param listOfEFOAccessionIds
    *          the EFO accession ids
-   * @return the 'experiment accession id' to 'integer' hash map for the list of accessions ie
-   *         {E-GEOD-10000=>10}
+   * @return the 'experiment accession id' to 'integer' map for the list of accessions ie {E-GEOD-10000=>10}
    * @throws MonqException
    */
-  public HashMap<String,Integer> getCountHashMapForListOfAccessions(List<String> listOfExperimentAccessionIds,
-                                                                    Scope scope,
-                                                                    String... listOfEFOAccessionIds) throws MonqException {
+  public Map<String,Integer> getCountMapForListOfAccessions(List<String> listOfExperimentAccessionIds,
+                                                            Scope scope,
+                                                            String... listOfEFOAccessionIds) throws MonqException {
     downloadFilesFromFTP(listOfExperimentAccessionIds);
     
-    HashMap<String,Integer> returnHashMap = new HashMap<String,Integer>();
+    Map<String,Integer> returnMap = new HashMap<String,Integer>();
     
-    HashMap<String,File> hashMapToUse;
+    Map<String,File> mapToUse;
     if (scope == Scope.sdrf) {
-      hashMapToUse = hashOfAccessionFilesForSDRF;
+      mapToUse = mapOfAccessionFilesForSDRF;
     } else if (scope == Scope.idf) {
-      hashMapToUse = hashOfAccessionFilesForIDF;
+      mapToUse = mapOfAccessionFilesForIDF;
     } else if (scope == Scope.both) {
-      HashMap<String,Integer> sdrfHash = getCountHashMapForListOfAccessions(listOfExperimentAccessionIds,
-        Scope.idf, listOfEFOAccessionIds);
-      HashMap<String,Integer> idfHash = getCountHashMapForListOfAccessions(listOfExperimentAccessionIds,
-        Scope.sdrf, listOfEFOAccessionIds);
+      Map<String,Integer> sdrfMap = getCountMapForListOfAccessions(listOfExperimentAccessionIds, Scope.idf,
+        listOfEFOAccessionIds);
+      Map<String,Integer> idfMap = getCountMapForListOfAccessions(listOfExperimentAccessionIds, Scope.sdrf,
+        listOfEFOAccessionIds);
       for (String accession : listOfExperimentAccessionIds) {
-        if (idfHash.containsKey(accession) && sdrfHash.containsKey(accession)) {
-          returnHashMap.put(accession, Integer.valueOf(idfHash.get(accession))
-                                       + Integer.valueOf(sdrfHash.get(accession)));
+        if (idfMap.containsKey(accession) && sdrfMap.containsKey(accession)) {
+          returnMap.put(accession, Integer.valueOf(idfMap.get(accession))
+                                   + Integer.valueOf(sdrfMap.get(accession)));
         }
       }
-      return returnHashMap;
+      return returnMap;
     } else {
       // Theoretically Never Reached
       return null;
     }
     
     for (String accession : listOfExperimentAccessionIds) {
-      File file = hashMapToUse.get(accession);
+      File file = mapToUse.get(accession);
       if (file != null) {
         String passage = getPassageFromFile(file);
         if (passage != "") {
-          returnHashMap.put(accession, getTotalCountOfRelatedOntologyTermsInPassage(passage,
+          returnMap.put(accession, getTotalCountOfRelatedOntologyTermsInPassage(passage,
             listOfEFOAccessionIds));
         }
       }
     }
     
-    return returnHashMap;
+    return returnMap;
   }
   
   /**
-   * Gets the the 'CEL file name' to 'integer' hashmap that is used to determine how many times a word related
-   * to a member in the list of ontology accession ids used in the row.
+   * Gets the the 'CEL file name' to 'integer' map that is used to determine how many times a word related to
+   * a member in the list of ontology accession ids used in the row.
    * 
    * @param experimentAccessionId
    *          the experiment accession id to look up
    * @param listOfOntologyAccessionIds
    *          the list of ontology accession ids
-   * @return the 'CEL file name' to 'integer' hashmap for the specified experiment ie {sample.cel=>5}
+   * @return the 'CEL file name' to 'integer' map for the specified experiment ie {sample.cel=>5}
    * @throws MonqException
    */
-  public HashMap<String,Integer> getCountHashMapForExperimentCELFiles(String experimentAccessionId,
-                                                                      String... listOfOntologyAccessionIds) throws MonqException {
-    HashMap<String,Integer> returnHash = new HashMap<String,Integer>();
+  public Map<String,Integer> getCountMapForExperimentCELFiles(String experimentAccessionId,
+                                                              String... listOfOntologyAccessionIds) throws MonqException {
+    Map<String,Integer> returnMap = new HashMap<String,Integer>();
     downloadFileFromFTP(experimentAccessionId);
     
-    File file = hashOfAccessionFilesForSDRF.get(experimentAccessionId);
+    File file = mapOfAccessionFilesForSDRF.get(experimentAccessionId);
     
     if (file == null) {
-      return returnHash;
+      return returnMap;
     }
     String passage = getPassageFromFile(file);
     
@@ -386,7 +370,7 @@ public class Kama {
           break;
         }
       }
-      // Put into Hash the count of how many children were found
+      // Put into map the count of how many children were found
       if (hasADFColumn == true) {
         for (int i = 1; i < table.length; i++) {
           // System.out.println(table[i][adfColumn]+ "\t"
@@ -394,47 +378,48 @@ public class Kama {
           // Make sure that CEL Files which have at least one
           // reference to EFO are still reported and
           // add the values
-          if (returnHash.get(table[i][adfColumn]) == null) {
-            returnHash.put(table[i][adfColumn], getTotalCountOfRelatedOntologyTermsInPassage(rowString[i],
+          if (returnMap.get(table[i][adfColumn]) == null) {
+            returnMap.put(table[i][adfColumn], getTotalCountOfRelatedOntologyTermsInPassage(rowString[i],
               listOfOntologyAccessionIds));
           } else {
             // put the sum of the samples in
-            returnHash.put(table[i][adfColumn], returnHash.get(table[i][adfColumn]).intValue()
-                                                + +getTotalCountOfRelatedOntologyTermsInPassage(rowString[i],
-                                                  listOfOntologyAccessionIds));
+            returnMap.put(table[i][adfColumn], returnMap.get(table[i][adfColumn]).intValue()
+                                               + +getTotalCountOfRelatedOntologyTermsInPassage(rowString[i],
+                                                 listOfOntologyAccessionIds));
           }
         }
       } else {
         System.out.println(experimentAccessionId + " does not have a ADF column");
       }
     }
-    return returnHash;
+    return returnMap;
   }
   
   /**
-   * Gets a 'CEL file name' to 'hashmap' hashmap. The inner hashmap is an 'ontology term' to 'integer'
-   * hashMap. This hash map is used to determine what words a CEL file has been annotated with and how many.
+   * Gets a 'CEL file name' to 'map' map. The inner map is an 'ontology term' to 'integer' map. This map is
+   * used to determine what words a CEL file has been annotated with and how many.
    * 
    * @param experimentAccessionId
    *          the experiment accesion id
    * @param listOfOntologyAccessionIds
    *          the list of ontology accession ids
    * 
-   * @return a hashMap which relates a 'CEL file name' to the words it has been annotated with and how many.
+   * @return a Map which relates a 'CEL file name' to the words it has been annotated with and how many.
    *         {Sample.CEL=>{Thymus=>2,Blood=>2}}
    * @throws MonqException
    * 
    */
-  public HashMap<String,HashMap<String,Integer>> getCountOfEachTermPerSample(String experimentAccessionId,
-                                                                             String... listOfOntologyAccessionIds) throws MonqException {
+  public Map<String,Map<String,Integer>> getCountOfEachTermPerSample(String experimentAccessionId,
+                                                                     String... listOfOntologyAccessionIds) throws MonqException {
     
+    String[] dictionary = getDictionaryOfTermsFromOntologyIds(listOfOntologyAccessionIds);
     downloadFileFromFTP(experimentAccessionId);
     
-    HashMap<String,HashMap<String,Integer>> returnHash = new HashMap<String,HashMap<String,Integer>>();
-    File file = hashOfAccessionFilesForSDRF.get(experimentAccessionId);
+    Map<String,Map<String,Integer>> returnMap = new HashMap<String,Map<String,Integer>>();
+    File file = mapOfAccessionFilesForSDRF.get(experimentAccessionId);
     
     if (file == null) {
-      return returnHash;
+      return returnMap;
     }
     String passage = getPassageFromFile(file);
     
@@ -456,7 +441,7 @@ public class Kama {
           break;
         }
       }
-      // Put into Hash the sample and the terms it found
+      // Put into map the sample and the terms it found
       if (hasADFColumn == true) {
         for (int i = 1; i < table.length; i++) {
           // System.out.println(table[i][adfColumn]+ "\t"
@@ -465,19 +450,19 @@ public class Kama {
           // Make sure that CEL Files which have at least one
           // reference to OntologyTerm are still reported and
           // add the values
-          if (returnHash.get(table[i][adfColumn]) == null) {
-            returnHash.put(table[i][adfColumn], passageToTermHash(rowString[i], listOfOntologyAccessionIds));
+          if (returnMap.get(table[i][adfColumn]) == null) {
+            returnMap.put(table[i][adfColumn], getCountFromPassage(rowString[i], getNfa(dictionary)));
           } else {
-            // Combine hashes
-            HashMap<String,Integer> newHash = passageToTermHash(rowString[i], listOfOntologyAccessionIds);
+            // Combine maps
+            Map<String,Integer> newMap = getCountFromPassage(rowString[i], getNfa(dictionary));
             
-            for (String term : newHash.keySet()) {
-              if (returnHash.get(table[i][adfColumn]).get(term) != null) {
-                int newSum = returnHash.get(table[i][adfColumn]).get(term).intValue()
-                             + newHash.get(term).intValue();
-                returnHash.get(table[i][adfColumn]).put(term, newSum);
+            for (String term : newMap.keySet()) {
+              if (returnMap.get(table[i][adfColumn]).get(term) != null) {
+                int newSum = returnMap.get(table[i][adfColumn]).get(term).intValue()
+                             + newMap.get(term).intValue();
+                returnMap.get(table[i][adfColumn]).put(term, newSum);
               } else {
-                returnHash.get(table[i][adfColumn]).put(term, newHash.get(term));
+                returnMap.get(table[i][adfColumn]).put(term, newMap.get(term));
               }
             }
           }
@@ -487,13 +472,13 @@ public class Kama {
       }
     }
     
-    return returnHash;
+    return returnMap;
     
   }
   
   /**
-   * Gets the 'OntologyTerm' to 'integer' hashmap that is used to identify how many words related to the list
-   * Of ontology accesion ids are mentioned in the experiment.
+   * Gets the 'OntologyTerm' to 'integer' map that is used to identify how many words related to the list Of
+   * ontology accesion ids are mentioned in the experiment.
    * 
    * @param experimentAccession
    *          the experiment accession
@@ -502,61 +487,56 @@ public class Kama {
    * @param scope
    *          the scope of the search. Can search IDF, SDRF, or both
    * 
-   * @return the 'OntologyTerm' to 'integer' hashmap ie {blood=>5}
+   * @return the 'OntologyTerm' to 'integer' map ie {blood=>5}
    * @throws MonqException
    */
-  public HashMap<String,Integer> getCountOfEachTermInExperiment(String experimentAccession,
-                                                                Scope scope,
-                                                                String... listOfOntologyAccessionIds) throws MonqException {
+  public Map<String,Integer> getCountOfEachTermInExperiment(String experimentAccession,
+                                                            Scope scope,
+                                                            String... listOfOntologyAccessionIds) throws MonqException {
     // Download Experiment
     downloadFileFromFTP(experimentAccession);
     
     // Get a list of children EFO
-    List<String> listOfChildren = getRelatedTerms(listOfOntologyAccessionIds);
+    String[] dictionary = getDictionaryOfTermsFromOntologyIds(listOfOntologyAccessionIds);
     
-    // Make a hashmap to return
-    HashMap<String,Integer> returnHashMap = new HashMap<String,Integer>();
+    // Make a map to return
+    Map<String,Integer> returnMap = new HashMap<String,Integer>();
     
-    HashMap<String,File> hashMapToUse;
+    Map<String,File> mapToUse;
     if (scope == Scope.sdrf) {
-      hashMapToUse = hashOfAccessionFilesForSDRF;
+      mapToUse = mapOfAccessionFilesForSDRF;
     } else if (scope == Scope.idf) {
-      hashMapToUse = hashOfAccessionFilesForIDF;
+      mapToUse = mapOfAccessionFilesForIDF;
     } else if (scope == Scope.both) {
-      HashMap<String,Integer> sdrfHash = getCountOfEachTermInExperiment(experimentAccession, Scope.idf,
+      Map<String,Integer> sdrfMap = getCountOfEachTermInExperiment(experimentAccession, Scope.idf,
         listOfOntologyAccessionIds);
-      HashMap<String,Integer> idfHash = getCountOfEachTermInExperiment(experimentAccession, Scope.sdrf,
+      Map<String,Integer> idfMap = getCountOfEachTermInExperiment(experimentAccession, Scope.sdrf,
         listOfOntologyAccessionIds);
       
-      for (String efoTerm : sdrfHash.keySet()) {
-        returnHashMap.put(efoTerm, sdrfHash.get(efoTerm));
+      for (String efoTerm : sdrfMap.keySet()) {
+        returnMap.put(efoTerm, sdrfMap.get(efoTerm));
       }
-      for (String efoTerm : idfHash.keySet()) {
-        if (returnHashMap.get(efoTerm) != null) {
-          returnHashMap.put(efoTerm, (Integer.valueOf(idfHash.get(efoTerm)) + Integer.valueOf(sdrfHash
-              .get(efoTerm))));
+      for (String efoTerm : idfMap.keySet()) {
+        if (returnMap.get(efoTerm) != null) {
+          returnMap.put(efoTerm, (Integer.valueOf(idfMap.get(efoTerm)) + Integer
+              .valueOf(sdrfMap.get(efoTerm))));
         } else {
           // Case where idf has a term that is not mentioned in the sdrf
-          returnHashMap.put(efoTerm, idfHash.get(efoTerm));
+          returnMap.put(efoTerm, idfMap.get(efoTerm));
         }
       }
-      return returnHashMap;
+      return returnMap;
     } else {
       return null;
     }
-    File file = hashMapToUse.get(experimentAccession);
+    File file = mapToUse.get(experimentAccession);
     if (file != null) {
       String passage = getPassageFromFile(file);
       if (passage != "") {
-        for (String dictWord : listOfChildren) {
-          int count = getCountFromPassage(dictWord, passage);
-          if (count != 0) {
-            returnHashMap.put(dictWord, count);
-          }
-        }
+        return getCountFromPassage(passage, getNfa(dictionary));
       }
     }
-    return returnHashMap;
+    return returnMap;
   }
   
   /**
@@ -574,7 +554,7 @@ public class Kama {
   public String getCountOfEachTermInExperimentAsString(String experimentAccession,
                                                        Scope filetype,
                                                        String... listOfOntologyAccessionIds) throws MonqException {
-    HashMap<String,Integer> countMap = getCountOfEachTermInExperiment(experimentAccession, filetype,
+    Map<String,Integer> countMap = getCountOfEachTermInExperiment(experimentAccession, filetype,
       listOfOntologyAccessionIds);
     String output = "";
     
@@ -586,53 +566,57 @@ public class Kama {
   }
   
   /**
-   * Gets the 'experiment accession id' to 'integer' hashmap that is used to determine how many assays there
-   * are per experiment
+   * Gets the 'experiment accession id' to 'integer' map that is used to determine how many assays there are
+   * per experiment
    * 
    * @param listOfExperimentAccessionIds
    *          the list of experiment accession ids
-   * @return the 'experiment accession id' to 'integer' hashmap that is used to determine how many assays
-   *         there are per experiment
+   * @return the 'experiment accession id' to 'integer' map that is used to determine how many assays there
+   *         are per experiment
    */
-  public HashMap<String,Integer> getCountOfAssaysPerExperiment(List<String> listOfExperimentAccessionIds) {
-    HashMap<String,Integer> returnHash = new HashMap<String,Integer>();
+  public Map<String,Integer> getCountOfAssaysPerExperiment(List<String> listOfExperimentAccessionIds) {
+    Map<String,Integer> returnMap = new HashMap<String,Integer>();
     
+    // Step 1 - Download Files
     downloadFilesFromFTP(listOfExperimentAccessionIds);
+    
+    // Step 2 - For each file, check to see if mapOfExperimentAccessionToCountOfAssays
+    // has the value. If it doesn't then put the value in mapOfExperimentAccessionToCountOfAssays
     
     for (String experimentAccession : listOfExperimentAccessionIds) {
       
-      if (hashOfExperimentAccessionToCountOfAssays.get(experimentAccession) == null) {
+      if (mapOfExperimentAccessionToCountOfAssays.get(experimentAccession) == null) {
         // File exists
-        if (hashOfAccessionFilesForSDRF.get(experimentAccession) != null) {
-          String[][] sdrf2D = stringToTable(getPassageFromFile(hashOfAccessionFilesForSDRF
+        if (mapOfAccessionFilesForSDRF.get(experimentAccession) != null) {
+          String[][] sdrf2D = stringToTable(getPassageFromFile(mapOfAccessionFilesForSDRF
               .get(experimentAccession)));
-          hashOfExperimentAccessionToCountOfAssays.put(experimentAccession, sdrf2D.length - 1);
+          mapOfExperimentAccessionToCountOfAssays.put(experimentAccession, sdrf2D.length - 1);
         }
       } else {
         // Do nothing extra
       }
-      returnHash.put(experimentAccession, hashOfExperimentAccessionToCountOfAssays.get(experimentAccession));
+      returnMap.put(experimentAccession, mapOfExperimentAccessionToCountOfAssays.get(experimentAccession));
     }
-    return returnHash;
+    return returnMap;
     
   }
   
   /**
-   * Gets the experimentAccession to IDF File hash
+   * Gets the experimentAccession to IDF File map
    * 
-   * @return experimentAccession to IDF File hash.
+   * @return experimentAccession to IDF File map.
    */
-  public HashMap<String,File> getCompleteIDFHash() {
-    return hashOfAccessionFilesForIDF;
+  public Map<String,File> getCompleteIDFMap() {
+    return mapOfAccessionFilesForIDF;
   }
   
   /**
-   * Gets the experimentAccession to SDRF File hash
+   * Gets the experimentAccession to SDRF File map
    * 
-   * @return experimentAccession to SDRF File hash.
+   * @return experimentAccession to SDRF File map.
    */
-  public HashMap<String,File> getCompleteSDRFHash() {
-    return hashOfAccessionFilesForSDRF;
+  public Map<String,File> getCompleteSDRFMap() {
+    return mapOfAccessionFilesForSDRF;
   }
   
   /**
@@ -656,8 +640,8 @@ public class Kama {
       
       for (String accession : listOfExperimentAccessions) {
         // Only download the files which are needed
-        if (hashOfAccessionFilesForSDRF.containsKey(accession)
-            && hashOfAccessionFilesForIDF.containsKey(accession)) {
+        if (mapOfAccessionFilesForSDRF.containsKey(accession)
+            && mapOfAccessionFilesForIDF.containsKey(accession)) {
           continue;
         }
         
@@ -679,7 +663,7 @@ public class Kama {
           
           if (client.getReplyString().contains("226")) {
             System.out.println(sdrfFile + "\tFile Received");
-            hashOfAccessionFilesForSDRF.put(accession, temp_sdrf);
+            mapOfAccessionFilesForSDRF.put(accession, temp_sdrf);
           } else {
             System.out.println(sdrfFile + "\tFailed");
           }
@@ -688,7 +672,7 @@ public class Kama {
           
           if (client.getReplyString().contains("226")) {
             System.out.println(idfFile + "\tFile Received");
-            hashOfAccessionFilesForIDF.put(accession, temp_idf);
+            mapOfAccessionFilesForIDF.put(accession, temp_idf);
           } else {
             System.out.println(idfFile + "\tFailed");
           }
@@ -764,18 +748,6 @@ public class Kama {
     return rowArray;
   }
   
-  private HashMap<String,Integer> passageToTermHash(String passage, String... listOfEFOAccessionIds) throws MonqException {
-    List<String> listOfChildren = getRelatedTerms(listOfEFOAccessionIds);
-    HashMap<String,Integer> returnHashMap = new HashMap<String,Integer>();
-    for (String dictWord : listOfChildren) {
-      int count = getCountFromPassage(dictWord, passage);
-      if (count != 0) {
-        returnHashMap.put(dictWord, count);
-      }
-    }
-    return returnHashMap;
-  }
-  
   private String getPassageFromFile(File file) {
     BufferedReader br;
     try {
@@ -804,11 +776,10 @@ public class Kama {
    *          the passage
    * @return a count of the number times the term appears in the passage
    */
-  private int getCountFromPassage(String term, String passage) throws MonqException {
+  private static Map<String,Integer> getCountFromPassage(String passage, Nfa nfa) throws MonqException {
+    
     try {
       Map<String,Integer> map = new HashMap<String,Integer>();
-      
-      Nfa nfa = new Nfa(Term2Re.convert(term), new DoCount()).or("[A-Za-z0-9]+", new Copy(Integer.MIN_VALUE));
       
       // Compile into the Dfa, specify that all text not matching any
       // regular expression shall be copied from input to output
@@ -820,18 +791,37 @@ public class Kama {
       
       // Get only the filtered text
       r.filter(passage);
-      int i = 0;
-      for (String key : map.keySet()) {
-        i += map.get(key);
-      }
-      return i;
-    } catch (ReSyntaxException e) {
-      throw new MonqException(e);
+      return map;
     } catch (CompileDfaException e) {
       throw new MonqException(e);
     } catch (IOException e) {
       throw new MonqException(e);
     }
     
+  }
+  
+  private Nfa getNfa(String... dictionary) throws MonqException {
+    if (hashCodeToNfa.containsKey(dictionary.hashCode())) {
+      return hashCodeToNfa.get(dictionary.hashCode());
+      
+    }
+    
+    try {
+      Nfa nfa = new Nfa(Nfa.NOTHING);
+      // If there is a clash, it doesn't matter.
+      int i = 0;
+      for (String item : dictionary) {
+        
+        nfa = nfa.or(Term2Re.convert(item), new DoCount(item).setPriority(i));
+        
+        i++;
+      }
+      // Use only complete matches
+      nfa = nfa.or("[A-Za-z0-9]+", new Copy(Integer.MIN_VALUE));
+      hashCodeToNfa.put(dictionary.hashCode(), nfa);
+      return nfa;
+    } catch (ReSyntaxException e) {
+      throw new MonqException(e);
+    }
   }
 }

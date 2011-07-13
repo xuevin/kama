@@ -2,7 +2,6 @@ package uk.ac.ebi.fgpt.kama;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
@@ -13,8 +12,7 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.Map;
 
 import monq.ie.Term2Re;
 import monq.jfa.CompileDfaException;
@@ -68,9 +66,15 @@ public class KamaTest {
   @Test
   public void testGetChildrenOfEFOAccession() throws OntologyServiceException {
     Kama testKama = new Kama();
-    List<String> listOfChildren = testKama.getRelatedTerms("EFO_0000798");
-    
-    if (!listOfChildren.contains("thymus")) {
+    String[] listOfChildren = testKama.getDictionaryOfTermsFromOntologyIds("EFO_0000798");
+    boolean found = false;
+    for (int i = 0; i < listOfChildren.length; i++) {
+      if (listOfChildren[i].equals("thymus")) {
+        found = true;
+        break;
+      }
+    }
+    if (found == false) {
       fail("Could not find thymus");
     }
   }
@@ -114,7 +118,7 @@ public class KamaTest {
   public void assertPassageIsFromBlood() throws OntologyServiceException {
     String passage = "the thymus ran far into blood";
     Kama kama = new Kama();
-    List<String> listOfChildren = kama.getRelatedTerms("EFO_0000798");
+    String[] listOfChildren = kama.getDictionaryOfTermsFromOntologyIds("EFO_0000798");
     
     boolean found = false;
     for (String dictWord : listOfChildren) {
@@ -156,7 +160,7 @@ public class KamaTest {
   public void assertPassageIsNotFromBlood() throws OntologyServiceException {
     String passage = "the happy chicken ran far";
     Kama kama = new Kama();
-    List<String> listOfChildren = kama.getRelatedTerms("EFO_0000798");
+    String[] listOfChildren = kama.getDictionaryOfTermsFromOntologyIds("EFO_0000798");
     
     boolean found = false;
     for (String dictWord : listOfChildren) {
@@ -275,7 +279,7 @@ public class KamaTest {
     accessionIDS.add("E-TABM-721"); // Title contains thymus
     accessionIDS.add("E-MEXP-2895"); // Should return false
     Kama kama = new Kama();
-    HashMap<String,Boolean> actual = kama.getTrueFalseHashMapForListOfAccessions(accessionIDS, Scope.idf,
+    Map<String,Boolean> actual = kama.getTrueFalseMapForListOfAccessions(accessionIDS, Scope.idf,
       "EFO_0000798");
     assertNotNull(actual);
     
@@ -292,7 +296,7 @@ public class KamaTest {
     accessionIDS.add("E-MEXP-2895"); // Should return false
     
     Kama kama = new Kama();
-    HashMap<String,Boolean> actual = kama.getTrueFalseHashMapForListOfAccessions(accessionIDS, Scope.sdrf,
+    Map<String,Boolean> actual = kama.getTrueFalseMapForListOfAccessions(accessionIDS, Scope.sdrf,
       "EFO_0000798");
     assertNotNull(actual);
     
@@ -318,10 +322,9 @@ public class KamaTest {
     accessionIDS.add("E-TABM-721"); // Title contains thymus
     accessionIDS.add("E-MEXP-2895"); // Should return false
     
-    HashMap<String,Boolean> sdrf = kama.getTrueFalseHashMapForListOfAccessions(accessionIDS, Scope.sdrf,
+    Map<String,Boolean> sdrf = kama.getTrueFalseMapForListOfAccessions(accessionIDS, Scope.sdrf,
       "EFO_0000798");
-    HashMap<String,Boolean> idf = kama.getTrueFalseHashMapForListOfAccessions(accessionIDS, Scope.idf,
-      "EFO_0000798");
+    Map<String,Boolean> idf = kama.getTrueFalseMapForListOfAccessions(accessionIDS, Scope.idf, "EFO_0000798");
     
     assertEquals(true, idf.get("E-TABM-721")); // Should pass because title contains thymus
     // assertEquals(true, idf.get("E-GEOD-24734")); // Should return true
@@ -341,7 +344,7 @@ public class KamaTest {
     accessionIDS.add("E-TABM-721"); // Title contains thymus
     accessionIDS.add("E-MEXP-2895"); // Should return false
     
-    HashMap<String,Boolean> both = kama.getTrueFalseHashMapForListOfAccessions(accessionIDS, Scope.both,
+    Map<String,Boolean> both = kama.getTrueFalseMapForListOfAccessions(accessionIDS, Scope.both,
       "EFO_0000798");
     assertEquals(true, both.get("E-TABM-721")); // Should pass because title contains thymus
     // assertEquals(true, both.get("E-GEOD-24734")); // Should return true
@@ -351,9 +354,9 @@ public class KamaTest {
   @Test
   public void testGetTrueFalseHashMapForExperimentCELFiles() throws OntologyServiceException, MonqException {
     Kama kama = new Kama();
-    assertEquals(false, kama.getTrueFalseHashMapForExperimentCELFiles("E-GEOD-26672", "EFO_0000798").get(
+    assertEquals(false, kama.getTrueFalseMapForExperimentCELFiles("E-GEOD-26672", "EFO_0000798").get(
       "GSM656451.CEL"));
-    assertEquals(null, kama.getTrueFalseHashMapForExperimentCELFiles("E-TABM-721", "EFO_0000798").get(
+    assertEquals(null, kama.getTrueFalseMapForExperimentCELFiles("E-TABM-721", "EFO_0000798").get(
       "GSM656451.CEL"));
   }
   
@@ -387,14 +390,14 @@ public class KamaTest {
     ArrayList<String> accessionIDS = new ArrayList<String>();
     accessionIDS.add("E-TABM-721");
     
-    assertEquals(6, kama.getCountHashMapForListOfAccessions(accessionIDS, Scope.idf, "EFO_0000798").get(
+    assertEquals(6, kama.getCountMapForListOfAccessions(accessionIDS, Scope.idf, "EFO_0000798").get(
       "E-TABM-721").intValue());
     assertEquals(3, kama.getCountOfEachTermInExperiment("E-TABM-721", Scope.idf, "EFO_0000798").get("spleen")
         .intValue());
     assertEquals(3, kama.getCountOfEachTermInExperiment("E-TABM-721", Scope.idf, "EFO_0000798").get("thymus")
         .intValue());
     
-    assertEquals(212, kama.getCountHashMapForListOfAccessions(accessionIDS, Scope.sdrf, "EFO_0000798").get(
+    assertEquals(212, kama.getCountMapForListOfAccessions(accessionIDS, Scope.sdrf, "EFO_0000798").get(
       "E-TABM-721").intValue());
     assertEquals(105, kama.getCountOfEachTermInExperiment("E-TABM-721", Scope.sdrf, "EFO_0000798").get(
       "spleen").intValue());
@@ -408,9 +411,9 @@ public class KamaTest {
     ArrayList<String> accessionIDS = new ArrayList<String>();
     accessionIDS.add("E-TABM-721");
     accessionIDS.add("E-GEOD-9171");
-    assertEquals(218, kama.getCountHashMapForListOfAccessions(accessionIDS, Scope.both, "EFO_0000798").get(
+    assertEquals(218, kama.getCountMapForListOfAccessions(accessionIDS, Scope.both, "EFO_0000798").get(
       "E-TABM-721").intValue());
-    assertEquals(0, kama.getCountHashMapForListOfAccessions(accessionIDS, Scope.both, "EFO_0000798").get(
+    assertEquals(0, kama.getCountMapForListOfAccessions(accessionIDS, Scope.both, "EFO_0000798").get(
       "E-GEOD-9171").intValue());
     
   }
@@ -418,7 +421,7 @@ public class KamaTest {
   @Test
   public void testgetChildrenOfEFOAccessionPlusItself_EFOIsNotFound() throws OntologyServiceException {
     Kama kama = new Kama();
-    assertNull(kama.getRelatedTerms("EFO_NOTFOUND"));
+    assertEquals(0, kama.getDictionaryOfTermsFromOntologyIds("EFO_NOTFOUND").length);
   }
   
   @Test
@@ -426,7 +429,9 @@ public class KamaTest {
                                                                      MonqException {
     // What happens when a file has does not have a ArrayDataFile
     Kama kama = new Kama();
-    kama.getTrueFalseHashMapForExperimentCELFiles("E-MTAB-502", "EFO_0000798");
+    Map<String,Boolean> map = kama.getTrueFalseMapForExperimentCELFiles("E-MTAB-502", "EFO_0000798");
+    assertEquals(0,map.size());
+    
   }
   
   @Test
@@ -439,47 +444,47 @@ public class KamaTest {
   @Test
   public void testGetCountHashMapForExperimentCELFiles() throws OntologyServiceException, MonqException {
     Kama kama = new Kama();
-    HashMap<String,Integer> hashMap2 = kama.getCountHashMapForExperimentCELFiles("E-GEOD-11941",
-      "EFO_0000798");
+    Map<String,Integer> hashMap2 = kama.getCountMapForExperimentCELFiles("E-GEOD-11941", "EFO_0000798");
     int sum2 = 0;
     for (String key : hashMap2.keySet()) {
       sum2 += hashMap2.get(key).intValue();
     }
     ArrayList<String> listOfExperimentAccessions = new ArrayList<String>();
     listOfExperimentAccessions.add("E-GEOD-11941");
-    assertEquals(sum2, kama.getCountHashMapForListOfAccessions(listOfExperimentAccessions, Scope.sdrf,
+    assertEquals(sum2, kama.getCountMapForListOfAccessions(listOfExperimentAccessions, Scope.sdrf,
       "EFO_0000798").get("E-GEOD-11941").intValue());
     
-    HashMap<String,Integer> hashMap = kama.getCountHashMapForExperimentCELFiles("E-TABM-721", "EFO_0000798");
+    Map<String,Integer> hashMap = kama.getCountMapForExperimentCELFiles("E-TABM-721", "EFO_0000798");
     int sum = 0;
     for (String key : hashMap.keySet()) {
       sum += hashMap.get(key).intValue();
     }
     ArrayList<String> listOfExperimentAccessions1 = new ArrayList<String>();
     listOfExperimentAccessions1.add("E-TABM-721");
-    assertEquals(sum, kama.getCountHashMapForListOfAccessions(listOfExperimentAccessions1, Scope.sdrf,
+    assertEquals(sum, kama.getCountMapForListOfAccessions(listOfExperimentAccessions1, Scope.sdrf,
       "EFO_0000798").get("E-TABM-721").intValue());
   }
   
   @Test
   public void testGetCountOfEachTermPerSample() throws OntologyServiceException, MonqException {
     Kama kama = new Kama();
-    HashMap<String,HashMap<String,Integer>> test = kama.getCountOfEachTermPerSample("E-TABM-721",
-      "EFO_0000798");
+    Map<String,Map<String,Integer>> test = kama.getCountOfEachTermPerSample("E-TABM-721", "EFO_0000798");
     for (String sample : test.keySet()) {
-      HashMap<String,Integer> row = test.get(sample);
+      System.out.println(sample);
+      Map<String,Integer> row = test.get(sample);
       for (String term : row.keySet()) {
         System.out.print(term + row.get(term).intValue() + ";");
       }
       System.out.println();
     }
+    assertEquals(test.get("859_0150_Burt_791_thymuspool35.CEL").get("spleen").intValue(), 1);
+    assertEquals(test.get("859_0150_Burt_791_thymuspool35.CEL").get("thymus").intValue(), 2);
   }
   
   @Test
   public void testGetCountOfEachTermPerExperiment() throws OntologyServiceException, MonqException {
     Kama kama = new Kama();
-    HashMap<String,Integer> hash = kama.getCountOfEachTermInExperiment("E-GEOD-23501", Scope.idf,
-      "EFO_0000403");
+    Map<String,Integer> hash = kama.getCountOfEachTermInExperiment("E-GEOD-23501", Scope.idf, "EFO_0000403");
     assertEquals(4, hash.get("diffuse large B-cell lymphoma").intValue());
   }
   
@@ -487,8 +492,7 @@ public class KamaTest {
   public void showThatSumOfCountPerTerm_Equals_SumOfAllTermsFoundPerExperiment() throws OntologyServiceException,
                                                                                 MonqException {
     Kama kama = new Kama();
-    HashMap<String,Integer> hash = kama.getCountOfEachTermInExperiment("E-GEOD-23501", Scope.idf,
-      "EFO_0000403");
+    Map<String,Integer> hash = kama.getCountOfEachTermInExperiment("E-GEOD-23501", Scope.idf, "EFO_0000403");
     int sum = 0;
     for (String key : hash.keySet()) {
       sum += hash.get(key).intValue();
@@ -496,7 +500,7 @@ public class KamaTest {
     
     ArrayList<String> listOfExperimentAccessions = new ArrayList<String>();
     listOfExperimentAccessions.add("E-GEOD-23501");
-    HashMap<String,Integer> hashOfAccessionToCount = kama.getCountHashMapForListOfAccessions(
+    Map<String,Integer> hashOfAccessionToCount = kama.getCountMapForListOfAccessions(
       listOfExperimentAccessions, Scope.idf, "EFO_0000403");
     
     assertEquals(sum, hashOfAccessionToCount.get("E-GEOD-23501").intValue());
@@ -510,7 +514,7 @@ public class KamaTest {
     listOfExperimentAccessions.add("E-GEOD-13367");
     listOfExperimentAccessions.add("E-GEOD-23501");
     listOfExperimentAccessions.add("E-TABM-721");
-    HashMap<String,Integer> hash = kama.getCountOfAssaysPerExperiment(listOfExperimentAccessions);
+    Map<String,Integer> hash = kama.getCountOfAssaysPerExperiment(listOfExperimentAccessions);
     assertEquals(56, hash.get("E-GEOD-13367").intValue());
     assertEquals(69, hash.get("E-GEOD-23501").intValue());
     assertEquals(71, hash.get("E-TABM-721").intValue());

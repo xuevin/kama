@@ -1,10 +1,6 @@
 package uk.ac.ebi.fgpt.kama;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,7 +9,6 @@ import java.util.Map;
 import java.util.Set;
 
 import monq.ie.Term2Re;
-import monq.jfa.AbstractFaAction;
 import monq.jfa.CompileDfaException;
 import monq.jfa.Dfa;
 import monq.jfa.DfaRun;
@@ -21,11 +16,7 @@ import monq.jfa.Nfa;
 import monq.jfa.PrintfFormatter;
 import monq.jfa.ReSyntaxException;
 import monq.jfa.actions.Copy;
-import monq.jfa.actions.Drop;
-import monq.jfa.actions.Printf;
-import monq.jfa.ctx.ContextManager;
 import monq.jfa.ctx.ContextStackProvider;
-import monq.programs.DictFilter;
 
 import org.junit.Test;
 
@@ -35,19 +26,25 @@ public class MonqTesting {
   
   @Test
   public void testMonq() throws MonqException {
-    int i = getCountFromPassage("bat man",
-      "The bat-man following batman wing-1-nut passage has bat wings blood in its wings annotations");
+    int i = getCountFromPassage("The bat-wing following batman passage has bat blood in its annotations trust ",
+      "bat man","WINGs","wing","wings");
     System.out.println(i);
     
   }
   
-  private int getCountFromPassage(String term, String passage) throws MonqException {
+  private int getCountFromPassage(String passage,String... terms) throws MonqException {
     
     try {
       Map<String,Integer> map = new HashMap<String,Integer>();
-
-      Nfa nfa = new Nfa(Term2Re.convert(term), new DoCount()).or("[A-Za-z0-9]+",
-        new Copy(Integer.MIN_VALUE));
+      
+      Nfa nfa = new Nfa(Nfa.NOTHING);
+      int i= 0;
+      for(String item: terms){
+        nfa = nfa.or(Term2Re.convert(item),new DoCount(item).setPriority(i));
+        i++;
+      }
+      //Use only complete matches
+      nfa = nfa.or("[A-Za-z0-9]+",new Copy(Integer.MIN_VALUE));
       
       // Compile into the Dfa, specify that all text not matching any
       // regular expression shall be copied from input to output
@@ -59,12 +56,10 @@ public class MonqTesting {
       
       // Get only the filtered text
       r.filter(passage);
-      int i = 0;
-      for (String key : map.keySet()) {
-        i+=map.get(key);
-        System.out.println(key + " : " + map.get(key));
+      for(String key :map.keySet()){
+        System.out.println(key + " " + map.get(key));
       }
-      return i;
+      return 0;
     } catch (ReSyntaxException e) {
       throw new MonqException(e);
     } catch (CompileDfaException e) {

@@ -6,10 +6,16 @@ import monq.jfa.AbstractFaAction;
 import monq.jfa.DfaRun;
 
 public class DoCount extends AbstractFaAction {
+  private String word;
+  
+  public DoCount(String wordToStoreInHash) {
+    this.word = wordToStoreInHash;
+  }
+  
   public void invoke(StringBuffer iotext, int start, DfaRun r) {
-    String word = iotext.substring(start);
-    iotext.setLength(start);
-    
+    // String word = iotext.substring(start);
+    // iotext.setLength(start);
+    //    
     Map m = (Map) r.clientData;
     Integer count = (Integer) m.get(word);
     if (count == null) m.put(word, new Integer(1));
