@@ -110,6 +110,7 @@ public class AppTest {
     args2[8] = "-s";
     App.main(args2);
   }
+
   public void testOnTheExperimentsThatFailed() throws OntologyServiceException, IOException, MonqException {
     String[] args2 = new String[9];
     args2[0] = "-input";

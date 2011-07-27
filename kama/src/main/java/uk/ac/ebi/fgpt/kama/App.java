@@ -103,10 +103,13 @@ public class App {
         // Summary Mode - display summary on the idf/sdrf level
         // and the default mode which is on the sample level
         if (displaySummary) {
+          System.out.println("Getting IDF Counts");
           Map<String,Integer> idfCount = kamaInstance.getCountMapForListOfAccessions(
             listOfExperimentAccessions, Scope.idf, listOfOntologyAccessionIds);
+          System.out.println("Getting SDRF Counts");
           Map<String,Integer> sdrfCount = kamaInstance.getCountMapForListOfAccessions(
             listOfExperimentAccessions, Scope.sdrf, listOfOntologyAccessionIds);
+          System.out.println("Getting Assay Counts");
           Map<String,Integer> assayCount = kamaInstance
               .getCountOfAssaysPerExperiment(listOfExperimentAccessions);
           
@@ -117,7 +120,9 @@ public class App {
           StringBuilder outString = new StringBuilder();
           
           outString.append("#AccessionId\tAssays\tIDF\tSDRF\tTerms");
+          int i = 0;
           for (String accession : listOfExperimentAccessions) {
+            
             if (idfCount.get(accession) != null && sdrfCount.get(accession) != null) {
               outString.append("\n");
               outString.append(accession + "\t");
@@ -130,8 +135,10 @@ public class App {
               System.out.println(accession + " does not have both Magetab files");
               continue;
             }
-            
+            System.out.print("\rWorking on experiment " + i);
+            i++;
           }
+          System.out.println();
           // Write the file
           FileManipulators.stringToFile(outputFileString, outString.toString());
           
@@ -192,8 +199,7 @@ public class App {
           Map<String,Map<String,Integer>> ontologyAccessionIdsToIDFCountHashMap = new HashMap<String,Map<String,Integer>>();
           for (String ontologyAccessionId : listOfOntologyAccessionIds) {
             ontologyAccessionIdsToIDFCountHashMap.put(ontologyAccessionId, kamaInstance
-                .getCountMapForListOfAccessions(listOfExperimentAccessions, Scope.idf,
-                  ontologyAccessionId));
+                .getCountMapForListOfAccessions(listOfExperimentAccessions, Scope.idf, ontologyAccessionId));
           }
           
           // For each experiment

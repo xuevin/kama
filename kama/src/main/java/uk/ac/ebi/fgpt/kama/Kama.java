@@ -57,7 +57,7 @@ public class Kama {
    * retrieval of the dictionary and make sure that the nfa doesn't get created too many times.
    */
   private Map<Integer,String[]> mapOfHashCodeToArray = new HashMap<Integer,String[]>();
-  private Map<Integer,Nfa> hashCodeToNfa = new HashMap<Integer,Nfa>();
+  private Map<Integer,Dfa> hashCodeToDfa = new HashMap<Integer,Dfa>();
   
   // Default uses version 142 of EFO as Ontology;
   public Kama() throws OntologyServiceException {
@@ -120,7 +120,7 @@ public class Kama {
   public boolean getIfPassageContainsOntologyTerm(String passage, String... listOfOntologyAccessionIds) throws MonqException {
     String[] dictionary = getDictionaryOfTermsFromOntologyIds(listOfOntologyAccessionIds);
     
-    if (getCountFromPassage(passage, getNfa(dictionary)).size() != 0) {
+    if (getCountFromPassage(passage, getDfa(dictionary)).size() != 0) {
       return true;
     }
     return false;
@@ -140,7 +140,7 @@ public class Kama {
                                                           String... listOfOntologyAccessionIds) throws MonqException {
     String[] listOfChildren = getDictionaryOfTermsFromOntologyIds(listOfOntologyAccessionIds);
     int countOfTermsFound = 0;
-    Map<String,Integer> countMap = getCountFromPassage(passage, getNfa(listOfChildren));
+    Map<String,Integer> countMap = getCountFromPassage(passage, getDfa(listOfChildren));
     for (Integer value : countMap.values()) {
       countOfTermsFound += value.intValue();
     }
@@ -451,10 +451,10 @@ public class Kama {
           // reference to OntologyTerm are still reported and
           // add the values
           if (returnMap.get(table[i][adfColumn]) == null) {
-            returnMap.put(table[i][adfColumn], getCountFromPassage(rowString[i], getNfa(dictionary)));
+            returnMap.put(table[i][adfColumn], getCountFromPassage(rowString[i], getDfa(dictionary)));
           } else {
             // Combine maps
-            Map<String,Integer> newMap = getCountFromPassage(rowString[i], getNfa(dictionary));
+            Map<String,Integer> newMap = getCountFromPassage(rowString[i], getDfa(dictionary));
             
             for (String term : newMap.keySet()) {
               if (returnMap.get(table[i][adfColumn]).get(term) != null) {
@@ -533,7 +533,7 @@ public class Kama {
     if (file != null) {
       String passage = getPassageFromFile(file);
       if (passage != "") {
-        return getCountFromPassage(passage, getNfa(dictionary));
+        return getCountFromPassage(passage, getDfa(dictionary));
       }
     }
     return returnMap;
@@ -776,14 +776,13 @@ public class Kama {
    *          the passage
    * @return a count of the number times the term appears in the passage
    */
-  private static Map<String,Integer> getCountFromPassage(String passage, Nfa nfa) throws MonqException {
+  private static Map<String,Integer> getCountFromPassage(String passage, Dfa dfa) throws MonqException {
     
     try {
       Map<String,Integer> map = new HashMap<String,Integer>();
       
       // Compile into the Dfa, specify that all text not matching any
       // regular expression shall be copied from input to output
-      Dfa dfa = nfa.compile(DfaRun.UNMATCHED_DROP);
       
       // get a machinery (DfaRun) to operate the Dfa
       DfaRun r = new DfaRun(dfa);
@@ -792,17 +791,15 @@ public class Kama {
       // Get only the filtered text
       r.filter(passage);
       return map;
-    } catch (CompileDfaException e) {
-      throw new MonqException(e);
     } catch (IOException e) {
       throw new MonqException(e);
     }
     
   }
   
-  private Nfa getNfa(String... dictionary) throws MonqException {
-    if (hashCodeToNfa.containsKey(dictionary.hashCode())) {
-      return hashCodeToNfa.get(dictionary.hashCode());
+  private Dfa getDfa(String... dictionary) throws MonqException {
+    if (hashCodeToDfa.containsKey(dictionary.hashCode())) {
+      return hashCodeToDfa.get(dictionary.hashCode());
       
     }
     
@@ -818,9 +815,14 @@ public class Kama {
       }
       // Use only complete matches
       nfa = nfa.or("[A-Za-z0-9]+", new Copy(Integer.MIN_VALUE));
-      hashCodeToNfa.put(dictionary.hashCode(), nfa);
-      return nfa;
+      Dfa dfa = nfa.compile(DfaRun.UNMATCHED_DROP);
+      hashCodeToDfa.put(dictionary.hashCode(), dfa);
+     
+
+      return dfa;
     } catch (ReSyntaxException e) {
+      throw new MonqException(e);
+    } catch (CompileDfaException e) {
       throw new MonqException(e);
     }
   }

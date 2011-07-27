@@ -63,6 +63,7 @@ public class FileManipulators {
    */
   public static String stringToFile(String outPath, String outputString) {
     try {
+      System.out.println("Beginning to write file out");
       // Create file
       BufferedWriter bufferedWriter;
       File file = new File(outPath);
