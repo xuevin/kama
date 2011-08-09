@@ -39,7 +39,7 @@ public class FileManipulatorsTest {
 	}
 	@Test
 	public void stringToFile(){
-		String output = FileManipulators.stringToFile("write.txt", "Hello World");
+		String output = FileManipulators.stringToFile("target/write.txt", "Hello World");
 		File file;
 		file = new File(output);
 		String[] array = FileManipulators.fileToArray(file);
