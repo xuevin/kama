@@ -84,7 +84,7 @@ public class Kama {
    *          the list of ontology accession ids for which you want to retrieve the children from.
    * @return an array of the all the class's children, the class itself, and related synonyms.
    */
-  public String[] getDictionaryOfTermsFromOntologyIds(String... listOfOntologyAccessionIds) {
+  public String[] getDictionaryOfTermsFromOntologyIds(List<String> listOfOntologyAccessionIds) {
     // First check to see if this listOfOntologyAccessionIds has been called before
     if (mapOfHashCodeToArray.containsKey(listOfOntologyAccessionIds.hashCode())) {
       return mapOfHashCodeToArray.get(listOfOntologyAccessionIds.hashCode());
@@ -117,7 +117,7 @@ public class Kama {
    *         listOfOntologyAccessionIds
    * @throws MonqException
    */
-  public boolean getIfPassageContainsOntologyTerm(String passage, String... listOfOntologyAccessionIds) throws MonqException {
+  public boolean getIfPassageContainsOntologyTerm(String passage, List<String> listOfOntologyAccessionIds) throws MonqException {
     String[] dictionary = getDictionaryOfTermsFromOntologyIds(listOfOntologyAccessionIds);
     
     if (getCountFromPassage(passage, getDfa(dictionary)).size() != 0) {
@@ -137,7 +137,7 @@ public class Kama {
    * @throws MonqException
    */
   public int getTotalCountOfRelatedOntologyTermsInPassage(String passage,
-                                                          String... listOfOntologyAccessionIds) throws MonqException {
+                                                          List<String> listOfOntologyAccessionIds) throws MonqException {
     String[] listOfChildren = getDictionaryOfTermsFromOntologyIds(listOfOntologyAccessionIds);
     int countOfTermsFound = 0;
     Map<String,Integer> countMap = getCountFromPassage(passage, getDfa(listOfChildren));
@@ -163,7 +163,7 @@ public class Kama {
    */
   public Map<String,Boolean> getTrueFalseMapForListOfAccessions(ArrayList<String> listOfExperimentAccessionIds,
                                                                 Scope scope,
-                                                                String... listOfOntologyAccessionIds) throws MonqException {
+                                                                List<String> listOfOntologyAccessionIds) throws MonqException {
     downloadFilesFromFTP(listOfExperimentAccessionIds);
     
     Map<String,Boolean> returnMap = new HashMap<String,Boolean>();
@@ -219,7 +219,7 @@ public class Kama {
    * @throws MonqException
    */
   public Map<String,Boolean> getTrueFalseMapForExperimentCELFiles(String experimentAccession,
-                                                                  String... listOfOntologyAccessionIds) throws MonqException {
+                                                                  List<String> listOfOntologyAccessionIds) throws MonqException {
     Map<String,Boolean> returnMap = new HashMap<String,Boolean>();
     
     downloadFileFromFTP(experimentAccession);
@@ -288,7 +288,7 @@ public class Kama {
    */
   public Map<String,Integer> getCountMapForListOfAccessions(List<String> listOfExperimentAccessionIds,
                                                             Scope scope,
-                                                            String... listOfEFOAccessionIds) throws MonqException {
+                                                            List<String> listOfEFOAccessionIds) throws MonqException {
     downloadFilesFromFTP(listOfExperimentAccessionIds);
     
     Map<String,Integer> returnMap = new HashMap<String,Integer>();
@@ -341,7 +341,7 @@ public class Kama {
    * @throws MonqException
    */
   public Map<String,Integer> getCountMapForExperimentCELFiles(String experimentAccessionId,
-                                                              String... listOfOntologyAccessionIds) throws MonqException {
+                                                              List<String> listOfOntologyAccessionIds) throws MonqException {
     Map<String,Integer> returnMap = new HashMap<String,Integer>();
     downloadFileFromFTP(experimentAccessionId);
     
@@ -410,7 +410,7 @@ public class Kama {
    * 
    */
   public Map<String,Map<String,Integer>> getCountOfEachTermPerSample(String experimentAccessionId,
-                                                                     String... listOfOntologyAccessionIds) throws MonqException {
+                                                                     List<String> listOfOntologyAccessionIds) throws MonqException {
     
     String[] dictionary = getDictionaryOfTermsFromOntologyIds(listOfOntologyAccessionIds);
     downloadFileFromFTP(experimentAccessionId);
@@ -492,7 +492,7 @@ public class Kama {
    */
   public Map<String,Integer> getCountOfEachTermInExperiment(String experimentAccession,
                                                             Scope scope,
-                                                            String... listOfOntologyAccessionIds) throws MonqException {
+                                                            List<String> listOfOntologyAccessionIds) throws MonqException {
     // Download Experiment
     downloadFileFromFTP(experimentAccession);
     
@@ -553,7 +553,7 @@ public class Kama {
    */
   public String getCountOfEachTermInExperimentAsString(String experimentAccession,
                                                        Scope filetype,
-                                                       String... listOfOntologyAccessionIds) throws MonqException {
+                                                       List<String> listOfOntologyAccessionIds) throws MonqException {
     Map<String,Integer> countMap = getCountOfEachTermInExperiment(experimentAccession, filetype,
       listOfOntologyAccessionIds);
     String output = "";
@@ -817,8 +817,7 @@ public class Kama {
       nfa = nfa.or("[A-Za-z0-9]+", new Copy(Integer.MIN_VALUE));
       Dfa dfa = nfa.compile(DfaRun.UNMATCHED_DROP);
       hashCodeToDfa.put(dictionary.hashCode(), dfa);
-     
-
+      
       return dfa;
     } catch (ReSyntaxException e) {
       throw new MonqException(e);

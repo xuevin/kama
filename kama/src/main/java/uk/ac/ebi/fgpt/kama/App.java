@@ -2,6 +2,7 @@ package uk.ac.ebi.fgpt.kama;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,160 +97,18 @@ public class App {
         // Turn files into java objects
         List<String> listOfExperimentAccessions = FileManipulators.fileToArrayList(new File(
             inputExperimentList));
-        String[] listOfOntologyAccessionIds = FileManipulators
-            .fileToArray(new File(inputOntologyAccessionIds));
+        List<String> listOfOntologyAccessionIds = FileManipulators.fileToArrayList(new File(
+            inputOntologyAccessionIds));
         
         // Two modes
         // Summary Mode - display summary on the idf/sdrf level
         // and the default mode which is on the sample level
         if (displaySummary) {
-          System.out.println("Getting IDF Counts");
-          Map<String,Integer> idfCount = kamaInstance.getCountMapForListOfAccessions(
-            listOfExperimentAccessions, Scope.idf, listOfOntologyAccessionIds);
-          System.out.println("Getting SDRF Counts");
-          Map<String,Integer> sdrfCount = kamaInstance.getCountMapForListOfAccessions(
-            listOfExperimentAccessions, Scope.sdrf, listOfOntologyAccessionIds);
-          System.out.println("Getting Assay Counts");
-          Map<String,Integer> assayCount = kamaInstance
-              .getCountOfAssaysPerExperiment(listOfExperimentAccessions);
-          
-          if (idfCount.size() != sdrfCount.size()) {
-            System.err.println("There was an error fetching files. SDRF files are not equal to IDF Files");
-            System.err.println("Will Print Out Experiments That Have both SDRF and IDFs");
-          }
-          StringBuilder outString = new StringBuilder();
-          
-          outString.append("#AccessionId\tAssays\tIDF\tSDRF\tTerms");
-          int i = 0;
-          for (String accession : listOfExperimentAccessions) {
-            
-            if (idfCount.get(accession) != null && sdrfCount.get(accession) != null) {
-              outString.append("\n");
-              outString.append(accession + "\t");
-              outString.append(assayCount.get(accession).toString() + "\t");
-              outString.append(idfCount.get(accession) + "\t");
-              outString.append(sdrfCount.get(accession) + "\t");
-              outString.append(kamaInstance.getCountOfEachTermInExperimentAsString(accession, Scope.both,
-                listOfOntologyAccessionIds));
-            } else {
-              System.out.println(accession + " does not have both Magetab files");
-              continue;
-            }
-            System.out.print("\rWorking on experiment " + i);
-            i++;
-          }
-          System.out.println();
-          // Write the file
-          FileManipulators.stringToFile(outputFileString, outString.toString());
-          
-          if (export) {
-            Map<String,File> idfHash = kamaInstance.getCompleteIDFMap();
-            Map<String,File> sdrfHash = kamaInstance.getCompleteSDRFMap();
-            Map<String,Integer> bothCount = kamaInstance.getCountMapForListOfAccessions(
-              listOfExperimentAccessions, Scope.both, listOfOntologyAccessionIds);
-            
-            File outFile = new File(outputFileString);
-            String outDir = outFile.getParent();
-            
-            // Make top level directories
-            System.out.println("Making top level directories...");
-            File yesdir = new File(outDir + "/positive");
-            yesdir.delete();
-            yesdir.mkdir();
-            File nodir = new File(outDir + "/negative");
-            nodir.delete();
-            nodir.mkdir();
-            
-            for (String experimentAccession : listOfExperimentAccessions) {
-              
-              if (idfHash.containsKey(experimentAccession) && sdrfHash.containsKey(experimentAccession)) {
-                
-                // Yes it does contain a member
-                
-                File dir;
-                if (bothCount.get(experimentAccession).intValue() != 0) {
-                  dir = new File(yesdir.getAbsolutePath() + "/" + experimentAccession);
-                } else {// No it does not
-                  dir = new File(nodir.getAbsolutePath() + "/" + experimentAccession);
-                }
-                dir.delete();
-                dir.mkdir();
-                File targetIDF = new File(dir.getAbsolutePath() + "/" + experimentAccession + ".idf.txt");
-                File targetSDRF = new File(dir.getAbsolutePath() + "/" + experimentAccession + ".sdrf.txt");
-                
-                FileUtils.copyFile(idfHash.get(experimentAccession), targetIDF);
-                FileUtils.copyFile(sdrfHash.get(experimentAccession), targetSDRF);
-                System.out.println(experimentAccession + " created");
-              }
-            }
-            
-          }
-          
+          runSummaryMode(kamaInstance, outputFileString, export, listOfExperimentAccessions,
+            listOfOntologyAccessionIds);
         } else {
-          // Sample Level Output
-          StringBuilder outString = new StringBuilder();
-          outString.append("#AccessionId\tSample");
-          for (String ontoAccession : listOfOntologyAccessionIds) {
-            outString.append("\t" + ontoAccession + "_idf");
-            outString.append("\t" + ontoAccession + "_sample");
-          }
-          outString.append("\tTerms\n");
-          
-          // For each ontology class, save the experimentToCount hashmap on the idf scope.
-          Map<String,Map<String,Integer>> ontologyAccessionIdsToIDFCountHashMap = new HashMap<String,Map<String,Integer>>();
-          for (String ontologyAccessionId : listOfOntologyAccessionIds) {
-            ontologyAccessionIdsToIDFCountHashMap.put(ontologyAccessionId, kamaInstance
-                .getCountMapForListOfAccessions(listOfExperimentAccessions, Scope.idf, ontologyAccessionId));
-          }
-          
-          // For each experiment
-          for (String experimentAccession : listOfExperimentAccessions) {
-            
-            Map<String,Integer> sampleToCountHash = kamaInstance.getCountMapForExperimentCELFiles(
-              experimentAccession, listOfOntologyAccessionIds);
-            if (sampleToCountHash.size() == 0) {
-              System.out.println(experimentAccession
-                                 + " is null. May not contain ADF or may not be a valid accession");
-              continue;
-            }
-            
-            // For each experiment, and each ontolgyTerm, save the sampleToCount hashMap to save recomputing
-            // it at every sample
-            Map<String,Map<String,Integer>> ontologyTermToSampleCountHashMap = new HashMap<String,Map<String,Integer>>();
-            for (String ontoAccessionID : listOfOntologyAccessionIds) {
-              ontologyTermToSampleCountHashMap.put(ontoAccessionID, kamaInstance
-                  .getCountMapForExperimentCELFiles(experimentAccession, ontoAccessionID));
-            }
-            
-            Map<String,Map<String,Integer>> ontologyAccessionIdsToSampleLevelTerm = kamaInstance
-                .getCountOfEachTermPerSample(experimentAccession, listOfOntologyAccessionIds);
-            
-            // Just iterate through the samples
-            for (String sample : sampleToCountHash.keySet()) {
-              
-              String row = "";
-              row += (experimentAccession + "\t" + sample + "\t");
-              // For each ontology accession id , get the count in the IDF and the count in the specific
-              // sample
-              for (String ontoAccessionID : listOfOntologyAccessionIds) {
-                row += ontologyAccessionIdsToIDFCountHashMap.get(ontoAccessionID).get(experimentAccession)
-                    .intValue();
-                row += "\t";
-                row += ontologyTermToSampleCountHashMap.get(ontoAccessionID).get(sample).intValue() + "\t";
-                
-              }
-              // Put terms
-              Map<String,Integer> termsMap = ontologyAccessionIdsToSampleLevelTerm.get(sample);
-              for (String term : termsMap.keySet()) {
-                row += term + ":" + termsMap.get(term).intValue() + ";";
-              }
-              
-              System.out.println(row);
-              outString.append(row);
-              outString.append("\n");
-            }
-          }
-          FileManipulators.stringToFile(outputFileString, outString.toString());
+          runSampleMode(kamaInstance, outputFileString, listOfExperimentAccessions,
+            listOfOntologyAccessionIds);
         }
       } else {
 
@@ -258,5 +117,177 @@ public class App {
       // System.err.println( "Parsing failed.  Reason: " + e.getMessage() );
       formatter.printHelp("kama", cliOptions, true);
     }
+  }
+  
+  private static void runSampleMode(Kama kamaInstance,
+                                    String outputFileString,
+                                    List<String> listOfExperimentAccessions,
+                                    List<String> listOfOntologyAccessionIds) throws MonqException {
+    // Sample Level Output
+    
+    // Start by making the header
+    StringBuilder outString = new StringBuilder();
+    outString.append("#AccessionId\tSample");
+    for (String ontoAccession : listOfOntologyAccessionIds) {
+      outString.append("\t" + ontoAccession + "_idf");
+      outString.append("\t" + ontoAccession + "_sample");
+    }
+    outString.append("\tTerms\n");
+    
+    // For each ontology class, save the experimentToCount hashmap on the idf scope.
+    Map<String,Map<String,Integer>> ontologyAccessionIdsToIDFCountHashMap = new HashMap<String,Map<String,Integer>>();
+    
+    ArrayList<String> tempList = new ArrayList<String>();
+    for (String ontologyAccessionId : listOfOntologyAccessionIds) {
+      tempList.clear();
+      tempList.add(ontologyAccessionId);
+      ontologyAccessionIdsToIDFCountHashMap.put(ontologyAccessionId, kamaInstance
+          .getCountMapForListOfAccessions(listOfExperimentAccessions, Scope.idf, tempList));
+    }
+    
+    // For each experiment find the total counts using all the accession
+    int i = 0;
+    for (String experimentAccession : listOfExperimentAccessions) {
+      System.out.print("\rWorking on experiment " + experimentAccession + " " + i + "/"
+                       + listOfExperimentAccessions.size());
+      i++;
+      
+      Map<String,Integer> sampleToCountHash = kamaInstance.getCountMapForExperimentCELFiles(
+        experimentAccession, listOfOntologyAccessionIds);
+      if (sampleToCountHash.size() == 0) {
+        System.out.println(experimentAccession
+                           + " is null. May not contain ADF or may not be a valid accession");
+        continue;
+      }
+      
+      // For each experiment, and each ontolgyTerm, save the sampleToCount hashMap to save recomputing
+      // it at every sample
+      Map<String,Map<String,Integer>> ontologyTermToSampleCountHashMap = new HashMap<String,Map<String,Integer>>();
+      for (String ontoAccessionID : listOfOntologyAccessionIds) {
+        tempList.clear();
+        tempList.add(ontoAccessionID);
+        ontologyTermToSampleCountHashMap.put(ontoAccessionID, kamaInstance.getCountMapForExperimentCELFiles(
+          experimentAccession, tempList));
+      }
+      
+      Map<String,Map<String,Integer>> ontologyAccessionIdsToSampleLevelTerm = kamaInstance
+          .getCountOfEachTermPerSample(experimentAccession, listOfOntologyAccessionIds);
+      
+      // Just iterate through the samples
+      for (String sample : sampleToCountHash.keySet()) {
+        
+        String row = "";
+        row += (experimentAccession + "\t" + sample + "\t");
+        // For each ontology accession id , get the count in the IDF and the count in the specific
+        // sample
+        for (String ontoAccessionID : listOfOntologyAccessionIds) {
+          row += ontologyAccessionIdsToIDFCountHashMap.get(ontoAccessionID).get(experimentAccession)
+              .intValue();
+          row += "\t";
+          row += ontologyTermToSampleCountHashMap.get(ontoAccessionID).get(sample).intValue() + "\t";
+          
+        }
+        // Put terms
+        Map<String,Integer> termsMap = ontologyAccessionIdsToSampleLevelTerm.get(sample);
+        for (String term : termsMap.keySet()) {
+          row += term + ":" + termsMap.get(term).intValue() + ";";
+        }
+        
+        outString.append(row);
+        outString.append("\n");
+        
+      }
+    }
+    FileManipulators.stringToFile(outputFileString, outString.toString());
+    
+  }
+  
+  private static void runSummaryMode(Kama kamaInstance,
+                                     String outputFileString,
+                                     boolean export,
+                                     List<String> listOfExperimentAccessions,
+                                     List<String> listOfOntologyAccessionIds) throws MonqException,
+                                                                             IOException {
+    System.out.println("Getting IDF Counts");
+    Map<String,Integer> idfCount = kamaInstance.getCountMapForListOfAccessions(listOfExperimentAccessions,
+      Scope.idf, listOfOntologyAccessionIds);
+    System.out.println("Getting SDRF Counts");
+    Map<String,Integer> sdrfCount = kamaInstance.getCountMapForListOfAccessions(listOfExperimentAccessions,
+      Scope.sdrf, listOfOntologyAccessionIds);
+    System.out.println("Getting Assay Counts");
+    Map<String,Integer> assayCount = kamaInstance.getCountOfAssaysPerExperiment(listOfExperimentAccessions);
+    
+    if (idfCount.size() != sdrfCount.size()) {
+      System.err.println("There was an error fetching files. SDRF files are not equal to IDF Files");
+      System.err.println("Will Print Out Experiments That Have both SDRF and IDFs");
+    }
+    StringBuilder outString = new StringBuilder();
+    
+    outString.append("#AccessionId\tAssays\tIDF\tSDRF\tTerms");
+    int i = 0;
+    for (String accession : listOfExperimentAccessions) {
+      
+      if (idfCount.get(accession) != null && sdrfCount.get(accession) != null) {
+        outString.append("\n");
+        outString.append(accession + "\t");
+        outString.append(assayCount.get(accession).toString() + "\t");
+        outString.append(idfCount.get(accession) + "\t");
+        outString.append(sdrfCount.get(accession) + "\t");
+        outString.append(kamaInstance.getCountOfEachTermInExperimentAsString(accession, Scope.both,
+          listOfOntologyAccessionIds));
+      } else {
+        System.out.println(accession + " does not have both Magetab files");
+        continue;
+      }
+      System.out.print("\rWorking on experiment " + i);
+      i++;
+    }
+    System.out.println();
+    // Write the file
+    FileManipulators.stringToFile(outputFileString, outString.toString());
+    
+    if (export) {
+      Map<String,File> idfHash = kamaInstance.getCompleteIDFMap();
+      Map<String,File> sdrfHash = kamaInstance.getCompleteSDRFMap();
+      Map<String,Integer> bothCount = kamaInstance.getCountMapForListOfAccessions(listOfExperimentAccessions,
+        Scope.both, listOfOntologyAccessionIds);
+      
+      File outFile = new File(outputFileString);
+      String outDir = outFile.getParent();
+      
+      // Make top level directories
+      System.out.println("Making top level directories...");
+      File yesdir = new File(outDir + "/positive");
+      yesdir.delete();
+      yesdir.mkdir();
+      File nodir = new File(outDir + "/negative");
+      nodir.delete();
+      nodir.mkdir();
+      
+      for (String experimentAccession : listOfExperimentAccessions) {
+        
+        if (idfHash.containsKey(experimentAccession) && sdrfHash.containsKey(experimentAccession)) {
+          
+          // Yes it does contain a member
+          
+          File dir;
+          if (bothCount.get(experimentAccession).intValue() != 0) {
+            dir = new File(yesdir.getAbsolutePath() + "/" + experimentAccession);
+          } else {// No it does not
+            dir = new File(nodir.getAbsolutePath() + "/" + experimentAccession);
+          }
+          dir.delete();
+          dir.mkdir();
+          File targetIDF = new File(dir.getAbsolutePath() + "/" + experimentAccession + ".idf.txt");
+          File targetSDRF = new File(dir.getAbsolutePath() + "/" + experimentAccession + ".sdrf.txt");
+          
+          FileUtils.copyFile(idfHash.get(experimentAccession), targetIDF);
+          FileUtils.copyFile(sdrfHash.get(experimentAccession), targetSDRF);
+          System.out.println(experimentAccession + " created");
+        }
+      }
+      
+    }
+    
   }
 }

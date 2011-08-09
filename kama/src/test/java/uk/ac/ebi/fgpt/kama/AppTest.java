@@ -45,7 +45,7 @@ public class AppTest {
       // Create file
       BufferedWriter output;
       
-      File file = new File("write.txt");
+      File file = new File("target/write.txt");
       output = new BufferedWriter(new FileWriter(file));
       output.write("Hello World");
       output.close();
@@ -64,7 +64,7 @@ public class AppTest {
     args[0] = "-input";
     args[1] = "src/test/resources/accessiontest.txt";
     args[2] = "-output";
-    args[3] = "target/output.txt";
+    args[3] = "target/output1.txt";
     args[4] = "-ids";
     args[5] = "src/test/resources/efo.txt";
     args[6] = "-s";
@@ -77,7 +77,7 @@ public class AppTest {
     args2[0] = "-input";
     args2[1] = "src/test/resources/accessiontest.txt";
     args2[2] = "-output";
-    args2[3] = "target/output.txt";
+    args2[3] = "target/output2.txt";
     args2[4] = "-ids";
     args2[5] = "src/test/resources/efo.txt";
     App.main(args2);
@@ -89,7 +89,7 @@ public class AppTest {
     args2[0] = "-input";
     args2[1] = "src/test/resources/accessiontest.txt";
     args2[2] = "-output";
-    args2[3] = "target/output.txt";
+    args2[3] = "target/output3.txt";
     args2[4] = "-ids";
     args2[5] = "src/test/resources/efo.txt";
     args2[6] = "-x";
@@ -102,7 +102,7 @@ public class AppTest {
     args2[0] = "-input";
     args2[1] = "src/test/resources/accessiontest.txt";
     args2[2] = "-output";
-    args2[3] = "target/output.txt";
+    args2[3] = "target/output4.txt";
     args2[4] = "-ids";
     args2[5] = "src/test/resources/celllineobo.txt";
     args2[6] = "-owlfile";
@@ -111,17 +111,18 @@ public class AppTest {
     App.main(args2);
   }
 
+  @Test
   public void testOnTheExperimentsThatFailed() throws OntologyServiceException, IOException, MonqException {
-    String[] args2 = new String[9];
+    String[] args2 = new String[8];
     args2[0] = "-input";
     args2[1] = "src/test/resources/failedAccessions.txt";
     args2[2] = "-output";
-    args2[3] = "target/output.txt";
+    args2[3] = "target/output5.txt";
     args2[4] = "-ids";
     args2[5] = "src/test/resources/efoHead.txt";
     args2[6] = "-owlfile";
     args2[7] = "src/test/resources/efo_2_14.owl";
-    args2[8] = "-s";
+//    args2[8] = "-s";
     App.main(args2);
   }
 }
