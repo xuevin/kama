@@ -4,7 +4,7 @@
 
 	<groupId>uk.ac.ebi.fgpt</groupId>
 	<artifactId>kama</artifactId>
-	<version>1.1</version>
+	<version>1.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>kama</name>
 	<url>http://maven.apache.org</url>

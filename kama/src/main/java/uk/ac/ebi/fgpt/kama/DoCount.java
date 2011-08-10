@@ -5,6 +5,12 @@ import java.util.Map;
 import monq.jfa.AbstractFaAction;
 import monq.jfa.DfaRun;
 
+/**
+ * This is a simple callback class used by monq to count the terms found.
+ * 
+ * @author Vincent Xue
+ * 
+ */
 public class DoCount extends AbstractFaAction {
   private String word;
   
