@@ -148,8 +148,8 @@ public class App {
     // For each experiment find the total counts using all the accession
     int i = 0;
     for (String experimentAccession : listOfExperimentAccessions) {
-      System.out.print("\rWorking on experiment " + experimentAccession + " " + i + "/"
-                       + listOfExperimentAccessions.size());
+      System.out.print("\rWorking on experiment " + i + "/" + listOfExperimentAccessions.size() + "\t"
+                       + experimentAccession);
       i++;
       
       Map<String,Integer> sampleToCountHash = kamaInstance.getCountMapForExperimentCELFiles(
@@ -198,6 +198,7 @@ public class App {
         
       }
     }
+    System.out.println();
     FileManipulators.stringToFile(outputFileString, outString.toString());
     
   }
